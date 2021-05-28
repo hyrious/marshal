@@ -1,0 +1,40 @@
+{
+  "name": "@hyrious/marshal",
+  "version": "0.1.0",
+  "description": "Ruby marshal for the browser and node.js",
+  "repository": "hyrious/marshal",
+  "main": "dist/index.js",
+  "module": "dist/index.mjs",
+  "unpkg": "dist/index.iife.js",
+  "jsdelivr": "dist/index.iife.js",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "clean": "rimraf dist",
+    "build:type": "rollup src/index.ts -p dts -o dist/index.d.ts",
+    "build:iife": "esbuild src/index.ts --bundle --minify --sourcemap --format=iife --global-name=marshal --target=es6 --outfile=dist/index.iife.js",
+    "build:cjs": "esbuild src/index.ts --bundle --minify --sourcemap --platform=node --format=cjs --outfile=dist/index.js",
+    "build:esm": "esbuild src/index.ts --bundle --minify --sourcemap --format=esm --outfile=dist/index.mjs",
+    "build": "npm run clean && concurrently npm:build:*"
+  },
+  "keywords": [
+    "ruby",
+    "marshal",
+    "serialize"
+  ],
+  "author": "hyrious <hyrious@outlook.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "concurrently": "^6.2.0",
+    "esbuild": "^0.12.5",
+    "rimraf": "^3.0.2",
+    "rollup": "^2.50.3",
+    "rollup-plugin-dts": "^3.0.2"
+  }
+}

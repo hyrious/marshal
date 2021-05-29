@@ -7,6 +7,9 @@
   "module": "dist/index.mjs",
   "unpkg": "dist/index.iife.js",
   "jsdelivr": "dist/index.iife.js",
+  "files": [
+    "dist"
+  ],
   "exports": {
     ".": {
       "import": "./dist/index.mjs",
@@ -18,10 +21,11 @@
   "scripts": {
     "clean": "rimraf dist",
     "build:type": "rollup src/index.ts -p dts -o dist/index.d.ts",
-    "build:iife": "esbuild src/index.ts --bundle --minify --sourcemap --format=iife --global-name=marshal --target=es6 --outfile=dist/index.iife.js",
-    "build:cjs": "esbuild src/index.ts --bundle --minify --sourcemap --platform=node --format=cjs --outfile=dist/index.js",
-    "build:esm": "esbuild src/index.ts --bundle --minify --sourcemap --format=esm --outfile=dist/index.mjs",
-    "build": "npm run clean && concurrently npm:build:*"
+    "build:js": "node --experimental-json-modules scripts/build.mjs",
+    "build": "concurrently npm:build:*"
+  },
+  "engines": {
+    "node": ">=12"
   },
   "keywords": [
     "ruby",
@@ -31,10 +35,18 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
+    "@typescript-eslint/parser": "^4.25.0",
     "concurrently": "^6.2.0",
     "esbuild": "^0.12.5",
+    "eslint": "^7.27.0",
+    "eslint-plugin-unicorn": "^32.0.1",
     "rimraf": "^3.0.2",
     "rollup": "^2.50.3",
     "rollup-plugin-dts": "^3.0.2"
+  },
+  "eslintConfig": {
+    "parser": "@typescript-eslint/parser",
+    "extends": "plugin:unicorn/recommended",
+    "ignorePatterns": "dist"
   }
 }

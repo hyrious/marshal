@@ -29,7 +29,7 @@ load(Uint8Array.of(4, 8, 0x30).buffer) // null
 | `[]`                    | `[]` (no instance variables)                     |
 | `{}`                    | `RubyHash { pairs: [] }` (no instance variables) |
 | `Object.new`            | `RubyObject { className: Symbol(Object) }`       |
-| `S = Struct.new; S.new` | `RubyStruct { ssName: Symbol(S), pairs: [] }`    |
+| `S = Struct.new; S.new` | `RubyStruct { className: Symbol(S), pairs: [] }` |
 | `Object`                | `RubyClass { name: 'Object' }`                   |
 | `Math`                  | `RubyModule { name: 'Math' }`                    |
 

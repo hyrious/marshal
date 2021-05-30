@@ -8,6 +8,7 @@ const common = {
   minify: true,
   keepNames: true,
   sourcemap: true,
+  target: 'node12',
 }
 
 build({
@@ -20,6 +21,7 @@ build({
   ...common,
   outfile: package_.module,
   format: 'esm',
+  target: 'esnext',
 })
 
 build({

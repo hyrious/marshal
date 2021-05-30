@@ -8,6 +8,7 @@
   "unpkg": "dist/index.iife.js",
   "jsdelivr": "dist/index.iife.js",
   "files": [
+    "src",
     "dist"
   ],
   "exports": {
@@ -17,12 +18,10 @@
     }
   },
   "sideEffects": false,
-  "types": "dist/index.d.ts",
+  "types": "src/index.ts",
   "scripts": {
     "clean": "rimraf dist",
-    "build:type": "rollup src/index.ts -p dts -o dist/index.d.ts",
-    "build:js": "node --experimental-json-modules scripts/build.mjs",
-    "build": "concurrently npm:build:*"
+    "build": "node --experimental-json-modules scripts/build.mjs"
   },
   "engines": {
     "node": ">=12"
@@ -35,18 +34,7 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
-    "@typescript-eslint/parser": "^4.25.0",
-    "concurrently": "^6.2.0",
     "esbuild": "^0.12.5",
-    "eslint": "^7.27.0",
-    "eslint-plugin-unicorn": "^32.0.1",
-    "rimraf": "^3.0.2",
-    "rollup": "^2.50.3",
-    "rollup-plugin-dts": "^3.0.2"
-  },
-  "eslintConfig": {
-    "parser": "@typescript-eslint/parser",
-    "extends": "plugin:unicorn/recommended",
-    "ignorePatterns": "dist"
+    "rimraf": "^3.0.2"
   }
 }

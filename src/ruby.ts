@@ -1,3 +1,4 @@
+/** it may be Object, Struct, Hash, Class, Module */
 export class RubyBaseObject {}
 
 export class RubyObject extends RubyBaseObject {
@@ -11,9 +12,22 @@ export class RubyObject extends RubyBaseObject {
   userMarshal?: any
   /** `e`, extends module */
   extends?: Symbol
+  /** `I` or `o`, special ivar `:E` is omitted */
   instanceVariables: [Symbol, any][] = []
-  constructor(public className: Symbol) {
+
+  constructor(
+    public className: Symbol,
+    options?: {
+      data?: ArrayBuffer
+      wrapped?: any
+      userDefined?: ArrayBuffer
+      userMarshal?: any
+      extends?: Symbol
+      instanceVariables?: [Symbol, any][]
+    }
+  ) {
     super()
+    Object.assign(this, options)
   }
 }
 
@@ -24,17 +38,10 @@ export class RubyStruct extends RubyBaseObject {
   }
 }
 
-/** `{` */
+/** `{`, `}` */
 export class RubyHash extends RubyBaseObject {
-  constructor(public pairs: [any, any][]) {
+  constructor(public pairs: [any, any][], public defaultValue?: any) {
     super()
-  }
-}
-
-/** `}` */
-export class RubyHashWithDefaultValue extends RubyHash {
-  constructor(pairs: [any, any][], public defaultValue: any) {
-    super(pairs)
   }
 }
 

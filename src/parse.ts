@@ -2,14 +2,12 @@ import {
   RubyClass,
   RubyClassOrModule,
   RubyHash,
-  RubyHashWithDefaultValue,
   RubyModule,
   RubyObject,
   RubyStruct,
-} from './ruby-object'
-import { RegexpOption, Type } from './types'
-// eslint-disable-next-line unicorn/prevent-abbreviations
-import { extendsModule, stringFromBuffer, withIVar } from './utils'
+} from './ruby'
+import { BignumSign, RegexpOption, Type } from './types'
+import { stringFromBuffer, withIVar, withMod } from './utils'
 
 /** It occurs when the marshal data is not valid. */
 export class FormatError extends SyntaxError {
@@ -64,6 +62,78 @@ export class Parser {
     return this.getBytes(this.getFixnum())
   }
 
+  private getString() {
+    return stringFromBuffer(this.getChunk())
+  }
+
+  private getSymbol() {
+    return Symbol.for(this.getString())
+  }
+
+  private pushAndReturnSymbol(symbol: Symbol) {
+    this.#symbols.push(symbol)
+    return symbol
+  }
+
+  private pushAndReturnObject(object: any) {
+    this.#objects.push(object)
+    return object
+  }
+
+  private getItems() {
+    const count = this.getFixnum()
+    const array = []
+    for (let index = 0; index < count; ++index) {
+      array.push(this.getAny())
+    }
+    return array
+  }
+
+  private getPairs() {
+    const count = this.getFixnum()
+    const pairs: [any, any][] = []
+    for (let index = 0; index < count; ++index) {
+      const key = this.getAny()
+      const value = this.getAny()
+      pairs.push([key, value])
+    }
+    return pairs
+  }
+
+  private getBignum() {
+    const sign = this.view.getUint8(this.pos++) as BignumSign
+    const count = this.getFixnum() * 2
+    const bytes = new Uint8Array(this.getBytes(count))
+    let a = 0
+    for (let index = 0; index < count; ++index) {
+      a += bytes[index] * 2 ** (index * 8)
+    }
+    return sign === BignumSign.POSITIVE ? a : -a
+  }
+
+  private getFloat() {
+    const string = this.getString()
+    switch (string) {
+      case 'inf':
+        return Number.POSITIVE_INFINITY
+      case '-inf':
+        return Number.NEGATIVE_INFINITY
+      case 'nan':
+        return Number.NaN
+      default:
+        return Number(string)
+    }
+  }
+
+  private getRegExp() {
+    const source = this.getString()
+    const type = this.view.getUint8(this.pos++)
+    let flags = ''
+    if (type & RegexpOption.IGNORECASE) flags += 'i'
+    if (type & RegexpOption.MULTILINE) flags += 'm'
+    return new RegExp(source, flags)
+  }
+
   public get() {
     if (this.view.getInt16(this.pos) !== 0x4_08) {
       throw new FormatError('unsupported marshal version, expecting 4.8')
@@ -78,197 +148,94 @@ export class Parser {
     switch (chr) {
       case Type.TRUE:
         return true
+
       case Type.FALSE:
         return false
+
       case Type.NIL:
-        // eslint-disable-next-line unicorn/no-null
         return null
+
       case Type.FIXNUM:
         return this.getFixnum()
-      case Type.SYMBOL: {
-        const symbol = Symbol.for(stringFromBuffer(this.getChunk()))
-        this.#symbols.push(symbol)
-        return symbol
-      }
+
+      case Type.SYMBOL:
+        return this.pushAndReturnSymbol(this.getSymbol())
+
       case Type.SYMBOL_REF:
         return this.#symbols[this.getFixnum()]
+
       case Type.OBJECT_REF:
         return this.#objects[this.getFixnum() - 1]
-      case Type.IVAR: {
-        let object = this.getAny()
-        const count = this.getFixnum()
-        const pairs: [any, any][] = []
-        for (let index = 0; index < count; ++index) {
-          const key = this.getAny()
-          const value = this.getAny()
-          if (key === Symbol.for('E')) continue
-          pairs.push([key, value])
-        }
-        object =
-          typeof object === 'string' || object instanceof RegExp
-            ? object
-            : withIVar(object, pairs)
-        this.#objects.push(object)
-        return object
-      }
-      case Type.EXTEND: {
-        const module = this.getAny()
-        let object = this.getAny()
-        object = extendsModule(object, module)
-        this.#objects.push(object)
-        return object
-      }
-      case Type.ARRAY: {
-        const count = this.getFixnum()
-        const array = []
-        for (let index = 0; index < count; ++index) {
-          array.push(this.getAny())
-        }
-        this.#objects.push(array)
-        return array
-      }
-      case Type.BIGNUM: {
-        // prettier-ignore
-        const sign = String.fromCharCode(this.view.getUint8(this.pos++)) as '+' | '-'
-        const count = this.getFixnum() * 2
-        const bytes = new Uint8Array(this.getBytes(count))
-        let a = 0
-        for (let index = 0; index < count; ++index) {
-          a += bytes[index] * 2 ** (index * 8)
-        }
-        a = sign === '+' ? a : -a
-        this.#objects.push(a)
-        return a
-      }
-      case Type.CLASS: {
-        const name = stringFromBuffer(this.getChunk())
-        const klass = new RubyClass(name)
-        this.#objects.push(klass)
-        return klass
-      }
-      case Type.MODULE: {
-        const name = stringFromBuffer(this.getChunk())
-        const module = new RubyModule(name)
-        this.#objects.push(module)
-        return module
-      }
-      case Type.CLASS_OR_MODULE: {
-        const name = stringFromBuffer(this.getChunk())
-        const object = new RubyClassOrModule(name)
-        this.#objects.push(object)
-        return object
-      }
-      case Type.DATA: {
-        const className: Symbol = this.getAny()
-        const state = this.getAny()
-        const object = new RubyObject(className)
-        object.data = state
-        this.#objects.push(object)
-        return object
-      }
-      case Type.FLOAT: {
-        const string = stringFromBuffer(this.getChunk())
-        let object
-        switch (string) {
-          case 'inf':
-            object = Number.POSITIVE_INFINITY
-          case '-inf':
-            object = Number.NEGATIVE_INFINITY
-          case 'nan':
-            object = Number.NaN
-          default:
-            object = Number(string)
-        }
-        this.#objects.push(object)
-        return object
-      }
-      case Type.HASH: {
-        const count = this.getFixnum()
-        const pairs: [any, any][] = []
-        for (let index = 0; index < count; ++index) {
-          const key = this.getAny()
-          const value = this.getAny()
-          pairs.push([key, value])
-        }
-        const object = new RubyHash(pairs)
-        this.#objects.push(object)
-        return object
-      }
-      case Type.HASH_WITH_DEFAULT_VALUE: {
-        const count = this.getFixnum()
-        const pairs: [any, any][] = []
-        for (let index = 0; index < count; ++index) {
-          const key = this.getAny()
-          const value = this.getAny()
-          pairs.push([key, value])
-        }
-        const defaultValue = this.getAny()
-        const object = new RubyHashWithDefaultValue(pairs, defaultValue)
-        this.#objects.push(object)
-        return object
-      }
-      case Type.OBJECT: {
-        const className: Symbol = this.getAny()
-        const object = new RubyObject(className)
-        const count = this.getFixnum()
-        for (let index = 0; index < count; ++index) {
-          object.instanceVariables.push([this.getAny(), this.getAny()])
-        }
-        this.#objects.push(object)
-        return object
-      }
-      case Type.REGEXP: {
-        const source = stringFromBuffer(this.getChunk())
-        const type = this.view.getUint8(this.pos++)
-        let flags = ''
-        if (type & RegexpOption.IGNORECASE) flags += 'i'
-        if (type & RegexpOption.MULTILINE) flags += 'm'
-        const regexp = new RegExp(source, flags)
-        this.#objects.push(regexp)
-        return regexp
-      }
-      case Type.STRING: {
-        const string = stringFromBuffer(this.getChunk())
-        this.#objects.push(string)
-        return string
-      }
-      case Type.STRUCT: {
-        const className: Symbol = this.getAny()
-        const count = this.getFixnum()
-        const pairs: [Symbol, any][] = []
-        for (let index = 0; index < count; ++index) {
-          const key = this.getAny()
-          const value = this.getAny()
-          pairs.push([key, value])
-        }
-        const object = new RubyStruct(className, pairs)
-        this.#objects.push(object)
-        return object
-      }
-      case Type.USER_CLASS: {
-        const className: Symbol = this.getAny()
-        const wrapped = this.getAny()
-        const object = new RubyObject(className)
-        object.wrapped = wrapped
-        this.#objects.push(object)
-        return object
-      }
-      case Type.USER_DEFINED: {
-        const className: Symbol = this.getAny()
-        const userDefined = this.getChunk()
-        const object = new RubyObject(className)
-        object.userDefined = userDefined
-        this.#objects.push(object)
-        return object
-      }
-      case Type.USER_MARSHAL: {
-        const className: Symbol = this.getAny()
-        const userMarshal = this.getAny()
-        const object = new RubyObject(className)
-        object.userMarshal = userMarshal
-        this.#objects.push(object)
-        return object
-      }
+
+      case Type.IVAR:
+        return this.pushAndReturnObject(
+          withIVar(this.getAny(), this.getPairs())
+        )
+
+      case Type.EXTEND:
+        return this.pushAndReturnObject(withMod(this.getAny(), this.getAny()))
+
+      case Type.ARRAY:
+        return this.pushAndReturnObject(this.getItems())
+
+      case Type.BIGNUM:
+        return this.pushAndReturnObject(this.getBignum())
+
+      case Type.CLASS:
+        return this.pushAndReturnObject(new RubyClass(this.getString()))
+
+      case Type.MODULE:
+        return this.pushAndReturnObject(new RubyModule(this.getString()))
+
+      case Type.CLASS_OR_MODULE:
+        return this.pushAndReturnObject(new RubyClassOrModule(this.getString()))
+
+      case Type.DATA:
+        return this.pushAndReturnObject(
+          new RubyObject(this.getAny(), { data: this.getAny() })
+        )
+
+      case Type.FLOAT:
+        return this.pushAndReturnObject(this.getFloat())
+
+      case Type.HASH:
+        return this.pushAndReturnObject(new RubyHash(this.getPairs()))
+
+      case Type.HASH_WITH_DEFAULT_VALUE:
+        return this.pushAndReturnObject(
+          new RubyHash(this.getPairs(), this.getAny())
+        )
+
+      case Type.OBJECT:
+        return this.pushAndReturnObject(
+          new RubyObject(this.getAny(), { instanceVariables: this.getPairs() })
+        )
+
+      case Type.REGEXP:
+        return this.pushAndReturnObject(this.getRegExp())
+
+      case Type.STRING:
+        return this.pushAndReturnObject(this.getString())
+
+      case Type.STRUCT:
+        return this.pushAndReturnObject(
+          new RubyStruct(this.getAny(), this.getPairs())
+        )
+
+      case Type.USER_CLASS:
+        return this.pushAndReturnObject(
+          new RubyObject(this.getAny(), { wrapped: this.getAny() })
+        )
+
+      case Type.USER_DEFINED:
+        return this.pushAndReturnObject(
+          new RubyObject(this.getAny(), { userDefined: this.getChunk() })
+        )
+
+      case Type.USER_MARSHAL:
+        return this.pushAndReturnObject(
+          new RubyObject(this.getAny(), { userMarshal: this.getAny() })
+        )
     }
   }
 }

@@ -30,3 +30,8 @@ export const enum RegexpOption {
   IGNORECASE = 1,
   MULTILINE = 4,
 }
+
+export const enum BignumSign {
+  POSITIVE = 43, // '+'
+  NEGATIVE = 45, // '-'
+}

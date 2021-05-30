@@ -1,4 +1,4 @@
-import { pairsFromObject } from './utils'
+import { objectFromPairs, pairsFromObject } from './utils'
 
 /** it may be Object, Struct, Hash, Class, Module */
 export class RubyBaseObject {}
@@ -48,6 +48,10 @@ export class RubyHash extends RubyBaseObject {
 
   static from(object: Record<string, any>) {
     return new RubyHash(pairsFromObject(object))
+  }
+
+  toJS() {
+    return objectFromPairs(this.pairs)
   }
 }
 

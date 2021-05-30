@@ -5,7 +5,6 @@ const common: BuildOptions = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   minify: true,
-  keepNames: true,
   sourcemap: true,
   target: 'node12',
 }

@@ -18,14 +18,20 @@ load(Uint8Array.of(4, 8, 0x30).buffer) // null
 
 ### Ruby &harr; JavaScript
 
-| ruby               | javascript                                     |
-| ------------------ | ---------------------------------------------- |
-| `nil`              | `null`                                         |
-| `"string"`         | `"string"` (utf-8 only, no instance variables) |
-| `:symbol`          | `Symbol.for('symbol')` (same above)            |
-| `123456` (Integer) | `123456` (number)                              |
-| `123.456` (Float)  | `123.456` (number)                             |
-| `/cat/mixn`        | `/cat/im` (regexp, see comments below)         |
+| ruby                    | javascript                                       |
+| ----------------------- | ------------------------------------------------ |
+| `nil`                   | `null`                                           |
+| `"string"`              | `"string"` (utf-8 only, no instance variables)   |
+| `:symbol`               | `Symbol.for('symbol')` (same above)              |
+| `123456` (Integer)      | `123456` (number)                                |
+| `123.456` (Float)       | `123.456` (number)                               |
+| `/cat/mixn`             | `/cat/im` (regexp, see comments below)           |
+| `[]`                    | `[]` (no instance variables)                     |
+| `{}`                    | `RubyHash { pairs: [] }` (no instance variables) |
+| `Object.new`            | `RubyObject { className: Symbol(Object) }`       |
+| `S = Struct.new; S.new` | `RubyStruct { ssName: Symbol(S), pairs: [] }`    |
+| `Object`                | `RubyClass { name: 'Object' }`                   |
+| `Math`                  | `RubyModule { name: 'Math' }`                    |
 
 Note about **RegExp**:
 
@@ -54,6 +60,10 @@ Because the stream api in the browser and in node.js is not similar at all, it s
 **Do you support [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt) ?**
 
 Currently not, but JavaScript's `number` is big enough to store up to `2^53 - 1`.
+
+**Do you support ...?**
+
+Feel free to open an issue or submit a pr to improve this library.
 
 ### Reference
 

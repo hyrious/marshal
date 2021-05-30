@@ -1,3 +1,5 @@
+import { pairsFromObject } from './utils'
+
 /** it may be Object, Struct, Hash, Class, Module */
 export class RubyBaseObject {}
 
@@ -11,19 +13,19 @@ export class RubyObject extends RubyBaseObject {
   /** `U`, for `marshal_load`, created by user */
   userMarshal?: any
   /** `e`, extends module */
-  extends?: Symbol
-  /** `I` or `o`, special ivar `:E` is omitted */
-  instanceVariables: [Symbol, any][] = []
+  extends?: symbol
+  /** `I` or `o` */
+  instanceVariables: [symbol, any][] = []
 
   constructor(
-    public className: Symbol,
+    public className: symbol,
     options?: {
       data?: ArrayBuffer
       wrapped?: any
       userDefined?: ArrayBuffer
       userMarshal?: any
-      extends?: Symbol
-      instanceVariables?: [Symbol, any][]
+      extends?: symbol
+      instanceVariables?: [symbol, any][]
     }
   ) {
     super()
@@ -33,7 +35,7 @@ export class RubyObject extends RubyBaseObject {
 
 /** `S` */
 export class RubyStruct extends RubyBaseObject {
-  constructor(public className: Symbol, public pairs: [Symbol, any][]) {
+  constructor(public className: symbol, public pairs: [symbol, any][]) {
     super()
   }
 }
@@ -42,6 +44,10 @@ export class RubyStruct extends RubyBaseObject {
 export class RubyHash extends RubyBaseObject {
   constructor(public pairs: [any, any][], public defaultValue?: any) {
     super()
+  }
+
+  static from(object: Record<string, any>) {
+    return new RubyHash(pairsFromObject(object))
   }
 }
 

@@ -7,7 +7,23 @@ import {
   RubyStruct,
 } from './ruby'
 import { BignumSign, RegexpOption, Type } from './types'
-import { stringFromBuffer, withIVar, withMod } from './utils'
+import { stringFromBuffer } from './utils'
+
+function withIVar(object: any, pairs: [any, any][]) {
+  if (object instanceof RubyObject) {
+    object.instanceVariables = pairs
+  }
+  // note: some object's ivars are omitted here
+  //       like string, regexp, array, etc
+  return object
+}
+
+function withMod(object: any, module: symbol) {
+  if (object instanceof RubyObject) {
+    object.extends = module
+  }
+  return object
+}
 
 /** It occurs when the marshal data is not valid. */
 export class FormatError extends SyntaxError {
@@ -42,7 +58,7 @@ export class Parser {
 
   private getFixnum() {
     const t = this.view.getInt8(this.pos++)
-    if (t === 0x00) {
+    if (t === 0) {
       return 0
     } else if (-4 <= t && t <= 4) {
       const n = Math.abs(t)
@@ -135,7 +151,7 @@ export class Parser {
   }
 
   public get() {
-    if (this.view.getInt16(this.pos) !== 0x4_08) {
+    if (this.view.getInt16(this.pos) !== 0x408) {
       throw new FormatError('unsupported marshal version, expecting 4.8')
     }
     this.pos += 2

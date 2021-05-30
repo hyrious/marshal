@@ -21,7 +21,7 @@
   "types": "src/index.ts",
   "scripts": {
     "clean": "rimraf dist",
-    "build": "node --experimental-json-modules scripts/build.mjs"
+    "build": "esbuild-dev scripts/build.ts"
   },
   "engines": {
     "node": ">=12"
@@ -34,6 +34,7 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
+    "@hyrious/esbuild-dev": "^0.2.8",
     "esbuild": "^0.12.5",
     "rimraf": "^3.0.2"
   }

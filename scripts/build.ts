@@ -1,8 +1,7 @@
-import { build } from 'esbuild'
+import { build, BuildOptions } from 'esbuild'
 import package_ from '../package.json'
 
-/** @type {import('esbuild').BuildOptions} */
-const common = {
+const common: BuildOptions = {
   entryPoints: ['src/index.ts'],
   bundle: true,
   minify: true,

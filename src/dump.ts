@@ -75,9 +75,6 @@ function dumpAny(builder: ArrayBufferBuilder, value: any): ArrayBuffer {
     builder.appendString(Type.SYMBOL)
     dumpString(builder, Symbol.keyFor(value)!)
   } else if (value instanceof RubyObject) {
-    if (value.instanceVariables.length > 0) {
-      builder.appendString(Type.IVAR)
-    }
     if (value.data) {
       builder.appendString(Type.DATA)
       dumpAny(builder, value.data)
@@ -94,8 +91,9 @@ function dumpAny(builder: ArrayBufferBuilder, value: any): ArrayBuffer {
     } else if (value.extends) {
       builder.appendString(Type.EXTEND)
       dumpAny(builder, value.extends)
-    }
-    if (value.instanceVariables.length > 0) {
+    } else if (value.instanceVariables.length > 0) {
+      builder.appendString(Type.OBJECT)
+      dumpAny(builder, value.className)
       dumpPairs(builder, value.instanceVariables)
     }
   } else if (Array.isArray(value)) {

@@ -91,7 +91,7 @@ function dumpAny(builder: ArrayBufferBuilder, value: any): ArrayBuffer {
     } else if (value.extends) {
       builder.appendString(Type.EXTEND)
       dumpAny(builder, value.extends)
-    } else if (value.instanceVariables.length > 0) {
+    } else {
       builder.appendString(Type.OBJECT)
       dumpAny(builder, value.className)
       dumpPairs(builder, value.instanceVariables)

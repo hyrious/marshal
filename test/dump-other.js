@@ -29,6 +29,8 @@ test_hash({
   b: [Math.PI]
 })
 
+test_object({})
+
 test_object({
   '@a': true
 })

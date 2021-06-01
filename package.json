@@ -34,7 +34,7 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
-    "@hyrious/esbuild-dev": "^0.2.8",
+    "@hyrious/esbuild-dev": "^0.3.1",
     "esbuild": "^0.12.5",
     "rimraf": "^3.0.2"
   }

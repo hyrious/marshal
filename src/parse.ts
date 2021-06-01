@@ -4,6 +4,7 @@ import {
   RubyHash,
   RubyModule,
   RubyObject,
+  RubyString,
   RubyStruct,
 } from './ruby'
 import { BignumSign, RegexpOption, Type } from './types'
@@ -33,6 +34,24 @@ export class FormatError extends SyntaxError {
   }
 }
 
+export interface ParseOptions {
+  /**
+   * If `false`, don't convert buffer to string.
+   *
+   * This is useful to load files like `Scripts.rvdata2`.
+   *
+   * @default true
+   */
+  decodeString?: boolean
+
+  /**
+   * If `true` and `decodeString: false`, wrap the string in `RubyString`.
+   *
+   * @default false
+   */
+  wrapString?: boolean
+}
+
 /**
  * Call `get()` to read once, one file can store multiple marshal data.
  * @example
@@ -40,11 +59,17 @@ export class FormatError extends SyntaxError {
  */
 export class Parser {
   pos = 0
+  options: Required<ParseOptions>
   #symbols: Symbol[] = []
   /** except true, false, nil, Fixnums and Symbols */
   #objects: any[] = []
 
-  constructor(public view: DataView) {}
+  constructor(
+    public view: DataView,
+    { decodeString = true, wrapString = false }: ParseOptions = {}
+  ) {
+    this.options = { decodeString, wrapString }
+  }
 
   public hasNext() {
     return this.pos < this.view.byteLength
@@ -78,12 +103,23 @@ export class Parser {
     return this.getBytes(this.getFixnum())
   }
 
-  private getString() {
-    return stringFromBuffer(this.getChunk())
+  private getString(decode: true): string
+  private getString(decode?: boolean): ArrayBuffer | string
+  private getString(decode = this.options.decodeString) {
+    const chunk = this.getChunk()
+    if (decode) {
+      return stringFromBuffer(chunk)
+    } else {
+      if (this.options.wrapString) {
+        return new RubyString(chunk)
+      } else {
+        return chunk
+      }
+    }
   }
 
   private getSymbol() {
-    return Symbol.for(this.getString())
+    return Symbol.for(this.getString(true))
   }
 
   private pushAndReturnSymbol(symbol: Symbol) {
@@ -142,7 +178,7 @@ export class Parser {
   }
 
   private getRegExp() {
-    const source = this.getString()
+    const source = this.getString(true)
     const type = this.view.getUint8(this.pos++)
     let flags = ''
     if (type & RegexpOption.IGNORECASE) flags += 'i'
@@ -198,13 +234,15 @@ export class Parser {
         return this.pushAndReturnObject(this.getBignum())
 
       case Type.CLASS:
-        return this.pushAndReturnObject(new RubyClass(this.getString()))
+        return this.pushAndReturnObject(new RubyClass(this.getString(true)))
 
       case Type.MODULE:
-        return this.pushAndReturnObject(new RubyModule(this.getString()))
+        return this.pushAndReturnObject(new RubyModule(this.getString(true)))
 
       case Type.CLASS_OR_MODULE:
-        return this.pushAndReturnObject(new RubyClassOrModule(this.getString()))
+        return this.pushAndReturnObject(
+          new RubyClassOrModule(this.getString(true))
+        )
 
       case Type.DATA:
         return this.pushAndReturnObject(
@@ -264,17 +302,17 @@ export class Parser {
  * in node.js: load(fs.readFileSync('Scripts.rvdata2').buffer)
  * in browser: file.arrayBuffer().then(buffer => load(buffer))
  */
-export function load(buffer: ArrayBuffer) {
+export function load(buffer: ArrayBuffer, options?: ParseOptions) {
   const view = new DataView(buffer)
-  return new Parser(view).get()
+  return new Parser(view, options).get()
 }
 
 /**
  * Load all marshal sections from buffer.
  */
-export function loadAll(buffer: ArrayBuffer) {
+export function loadAll(buffer: ArrayBuffer, options?: ParseOptions) {
   const view = new DataView(buffer)
-  const parser = new Parser(view)
+  const parser = new Parser(view, options)
   const result = []
   while (parser.hasNext()) {
     result.push(parser.get())

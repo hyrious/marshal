@@ -3,6 +3,12 @@ import { objectFromPairs, pairsFromObject } from './utils'
 /** it may be Object, Struct, Hash, Class, Module */
 export class RubyBaseObject {}
 
+export class RubyString extends RubyBaseObject {
+  constructor(public buffer: ArrayBuffer) {
+    super()
+  }
+}
+
 export class RubyObject extends RubyBaseObject {
   /** `d`, for `_load_data`, created by ruby extensions */
   data?: ArrayBuffer

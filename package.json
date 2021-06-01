@@ -1,6 +1,6 @@
 {
   "name": "@hyrious/marshal",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Ruby marshal for the browser and node.js",
   "repository": "hyrious/marshal",
   "main": "dist/index.js",
@@ -34,7 +34,7 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
-    "@hyrious/esbuild-dev": "^0.3.1",
+    "@hyrious/esbuild-dev": "^0.3.2",
     "esbuild": "^0.12.5",
     "rimraf": "^3.0.2"
   }

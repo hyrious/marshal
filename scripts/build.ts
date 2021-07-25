@@ -1,29 +1,29 @@
-import { build, BuildOptions } from 'esbuild'
-import package_ from '../package.json'
+import { build, BuildOptions } from "esbuild";
+import pkg from "../package.json";
 
 const common: BuildOptions = {
-  entryPoints: ['src/index.ts'],
+  entryPoints: ["src/index.ts"],
   bundle: true,
-  minify: true,
   sourcemap: true,
-  target: 'node12',
-}
+  sourcesContent: false,
+  target: "node12",
+};
 
 build({
   ...common,
-  outfile: package_.jsdelivr,
-  globalName: package_.name.split('/').pop(),
-})
+  outfile: pkg.jsdelivr,
+  globalName: pkg.name.split("/").pop(),
+});
 
 build({
   ...common,
-  outfile: package_.module,
-  format: 'esm',
-  target: 'esnext',
-})
+  outfile: pkg.module,
+  format: "esm",
+  target: "esnext",
+});
 
 build({
   ...common,
-  outfile: package_.main,
-  format: 'cjs',
-})
+  outfile: pkg.main,
+  format: "cjs",
+});

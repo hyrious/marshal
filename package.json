@@ -12,16 +12,13 @@
     "dist"
   ],
   "exports": {
-    ".": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
-    }
+    "import": "./dist/index.mjs",
+    "require": "./dist/index.js"
   },
-  "sideEffects": false,
   "types": "src/index.ts",
   "scripts": {
-    "clean": "rimraf dist",
-    "build": "esbuild-dev scripts/build.ts"
+    "build": "esbuild-dev scripts/build.ts",
+    "test": "esbuild-dev test/index.ts"
   },
   "engines": {
     "node": ">=12"
@@ -34,8 +31,9 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
-    "@hyrious/esbuild-dev": "^0.3.2",
-    "esbuild": "^0.12.5",
-    "rimraf": "^3.0.2"
+    "@hyrious/esbuild-dev": "^0.4.1",
+    "@types/node": "^16.4.2",
+    "esbuild": "^0.12.15",
+    "uvu": "^0.5.1"
   }
 }

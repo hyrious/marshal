@@ -6,31 +6,15 @@ import {
   RubyObject,
   RubyString,
   RubyStruct,
-} from './ruby'
-import { BignumSign, RegexpOption, Type } from './types'
-import { stringFromBuffer } from './utils'
-
-function withIVar(object: any, pairs: [any, any][]) {
-  if (object instanceof RubyObject) {
-    object.instanceVariables = pairs
-  }
-  // note: some object's ivars are omitted here
-  //       like string, regexp, array, etc
-  return object
-}
-
-function withMod(object: any, module: symbol) {
-  if (object instanceof RubyObject) {
-    object.extends = module
-  }
-  return object
-}
+} from "./ruby";
+import { BignumSign, RegexpOption, Type } from "./types";
+import { stringFromBuffer } from "./utils";
 
 /** It occurs when the marshal data is not valid. */
 export class FormatError extends SyntaxError {
   constructor(message?: string) {
-    super(message)
-    this.name = this.constructor.name
+    super(message);
+    this.name = this.constructor.name;
   }
 }
 
@@ -42,14 +26,14 @@ export interface ParseOptions {
    *
    * @default true
    */
-  decodeString?: boolean
+  decodeString?: boolean;
 
   /**
    * If `true` and `decodeString: false`, wrap the string in `RubyString`.
    *
    * @default false
    */
-  wrapString?: boolean
+  wrapString?: boolean;
 }
 
 /**
@@ -58,238 +42,253 @@ export interface ParseOptions {
  * new Parser(dataView).get()
  */
 export class Parser {
-  pos = 0
-  options: Required<ParseOptions>
-  #symbols: Symbol[] = []
+  pos = 0;
+  options: Required<ParseOptions>;
+  #symbols: Symbol[] = [];
   /** except true, false, nil, Fixnums and Symbols */
-  #objects: any[] = []
+  #objects: any[] = [];
 
   constructor(
     public view: DataView,
     { decodeString = true, wrapString = false }: ParseOptions = {}
   ) {
-    this.options = { decodeString, wrapString }
+    this.options = { decodeString, wrapString };
   }
 
   public hasNext() {
-    return this.pos < this.view.byteLength
+    return this.pos < this.view.byteLength;
   }
 
   private getBytes(length: number) {
-    const { view, pos } = this
-    this.pos += length
-    return view.buffer.slice(pos, pos + length)
+    const { view, pos } = this;
+    this.pos += length;
+    return view.buffer.slice(pos, pos + length);
   }
 
   private getFixnum() {
-    const t = this.view.getInt8(this.pos++)
+    const t = this.view.getInt8(this.pos++);
     if (t === 0) {
-      return 0
+      return 0;
     } else if (-4 <= t && t <= 4) {
-      const n = Math.abs(t)
-      const shift = (4 - n) * 8
-      const bytes = new Uint8Array(this.getBytes(n))
-      let a = 0
+      const n = Math.abs(t);
+      const shift = (4 - n) * 8;
+      const bytes = new Uint8Array(this.getBytes(n));
+      let a = 0;
       for (let index = n - 1; index >= 0; --index) {
-        a = (a << 8) | bytes[index]
+        a = (a << 8) | bytes[index];
       }
-      return t > 0 ? a : (a << shift) >> shift
+      return t > 0 ? a : (a << shift) >> shift;
     } else {
-      return t > 0 ? t - 5 : t + 5
+      return t > 0 ? t - 5 : t + 5;
     }
   }
 
   private getChunk() {
-    return this.getBytes(this.getFixnum())
+    return this.getBytes(this.getFixnum());
   }
 
-  private getString(decode: true): string
-  private getString(decode?: boolean): ArrayBuffer | string
+  private getString(decode: true): string;
+  private getString(decode?: boolean): ArrayBuffer | string;
   private getString(decode = this.options.decodeString) {
-    const chunk = this.getChunk()
+    const chunk = this.getChunk();
     if (decode) {
-      return stringFromBuffer(chunk)
+      return stringFromBuffer(chunk);
     } else {
       if (this.options.wrapString) {
-        return new RubyString(chunk)
+        return new RubyString(chunk);
       } else {
-        return chunk
+        return chunk;
       }
     }
   }
 
   private getSymbol() {
-    return Symbol.for(this.getString(true))
-  }
-
-  private pushAndReturnSymbol(symbol: Symbol) {
-    this.#symbols.push(symbol)
-    return symbol
+    return Symbol.for(this.getString(true));
   }
 
   private pushAndReturnObject(object: any) {
-    this.#objects.push(object)
-    return object
-  }
-
-  private getItems() {
-    const count = this.getFixnum()
-    const array = []
-    for (let index = 0; index < count; ++index) {
-      array.push(this.getAny())
-    }
-    return array
+    this.#objects.push(object);
+    return object;
   }
 
   private getPairs() {
-    const count = this.getFixnum()
-    const pairs: [any, any][] = []
+    const count = this.getFixnum();
+    const pairs: [any, any][] = [];
     for (let index = 0; index < count; ++index) {
-      const key = this.getAny()
-      const value = this.getAny()
-      pairs.push([key, value])
+      const key = this.getAny();
+      const value = this.getAny();
+      pairs.push([key, value]);
     }
-    return pairs
+    return pairs;
   }
 
   private getBignum() {
-    const sign = this.view.getUint8(this.pos++) as BignumSign
-    const count = this.getFixnum() * 2
-    const bytes = new Uint8Array(this.getBytes(count))
-    let a = 0
+    const sign = this.view.getUint8(this.pos++) as BignumSign;
+    const count = this.getFixnum() * 2;
+    const bytes = new Uint8Array(this.getBytes(count));
+    let a = 0;
     for (let index = 0; index < count; ++index) {
-      a += bytes[index] * 2 ** (index * 8)
+      a += bytes[index] * 2 ** (index * 8);
     }
-    return sign === BignumSign.POSITIVE ? a : -a
+    return sign === BignumSign.POSITIVE ? a : -a;
   }
 
   private getFloat() {
-    const string = this.getString()
+    const string = this.getString();
     switch (string) {
-      case 'inf':
-        return Number.POSITIVE_INFINITY
-      case '-inf':
-        return Number.NEGATIVE_INFINITY
-      case 'nan':
-        return Number.NaN
+      case "inf":
+        return Number.POSITIVE_INFINITY;
+      case "-inf":
+        return Number.NEGATIVE_INFINITY;
+      case "nan":
+        return Number.NaN;
       default:
-        return Number(string)
+        return Number(string);
     }
   }
 
   private getRegExp() {
-    const source = this.getString(true)
-    const type = this.view.getUint8(this.pos++)
-    let flags = ''
-    if (type & RegexpOption.IGNORECASE) flags += 'i'
-    if (type & RegexpOption.MULTILINE) flags += 'm'
-    return new RegExp(source, flags)
+    const source = this.getString(true);
+    const type = this.view.getUint8(this.pos++);
+    let flags = "";
+    if (type & RegexpOption.IGNORECASE) flags += "i";
+    if (type & RegexpOption.MULTILINE) flags += "m";
+    return new RegExp(source, flags);
   }
 
   public get() {
     if (this.view.getInt16(this.pos) !== 0x408) {
-      throw new FormatError('unsupported marshal version, expecting 4.8')
+      throw new FormatError("unsupported marshal version, expecting 4.8");
     }
-    this.pos += 2
-    return this.getAny()
+    this.pos += 2;
+    return this.getAny();
   }
 
   private getAny(): any {
-    const t = this.view.getUint8(this.pos++)
-    const chr = String.fromCharCode(t) as Type
+    const t = this.view.getUint8(this.pos++);
+    const chr = String.fromCharCode(t) as Type;
+
+    let symbol: symbol, object: any, temp: any;
     switch (chr) {
       case Type.TRUE:
-        return true
+        return true;
 
       case Type.FALSE:
-        return false
+        return false;
 
       case Type.NIL:
-        return null
+        return null;
 
       case Type.FIXNUM:
-        return this.getFixnum()
+        return this.getFixnum();
 
       case Type.SYMBOL:
-        return this.pushAndReturnSymbol(this.getSymbol())
+        symbol = this.getSymbol();
+        this.#symbols.push(symbol);
+        return symbol;
 
       case Type.SYMBOL_REF:
-        return this.#symbols[this.getFixnum()]
+        return this.#symbols[this.getFixnum()];
 
       case Type.OBJECT_REF:
-        return this.#objects[this.getFixnum() - 1]
+        return this.#objects[this.getFixnum()];
 
       case Type.IVAR:
-        return this.pushAndReturnObject(
-          withIVar(this.getAny(), this.getPairs())
-        )
+        object = this.getAny();
+        this.#objects.push(object);
+        temp = this.getPairs();
+        if (object instanceof RubyObject) {
+          object.instanceVariables = temp;
+        }
+        return object;
 
       case Type.EXTEND:
-        return this.pushAndReturnObject(withMod(this.getAny(), this.getAny()))
+        object = this.getAny();
+        this.#objects.push(object);
+        temp = this.getAny();
+        if (object instanceof RubyObject) {
+          object.extends = temp;
+        }
+        return object;
 
       case Type.ARRAY:
-        return this.pushAndReturnObject(this.getItems())
+        const count = this.getFixnum();
+        const array: any[] = [];
+        this.#objects.push(array);
+        for (let index = 0; index < count; ++index) {
+          array.push(this.getAny());
+        }
+        return array;
 
       case Type.BIGNUM:
-        return this.pushAndReturnObject(this.getBignum())
+        return this.pushAndReturnObject(this.getBignum());
 
       case Type.CLASS:
-        return this.pushAndReturnObject(new RubyClass(this.getString(true)))
+        return this.pushAndReturnObject(new RubyClass(this.getString(true)));
 
       case Type.MODULE:
-        return this.pushAndReturnObject(new RubyModule(this.getString(true)))
+        return this.pushAndReturnObject(new RubyModule(this.getString(true)));
 
       case Type.CLASS_OR_MODULE:
-        return this.pushAndReturnObject(
-          new RubyClassOrModule(this.getString(true))
-        )
+        return this.pushAndReturnObject(new RubyClassOrModule(this.getString(true)));
 
       case Type.DATA:
-        return this.pushAndReturnObject(
-          new RubyObject(this.getAny(), { data: this.getAny() })
-        )
+        object = new RubyObject(this.getAny());
+        this.#objects.push(object);
+        object.data = this.getAny();
+        return object;
 
       case Type.FLOAT:
-        return this.pushAndReturnObject(this.getFloat())
+        return this.pushAndReturnObject(this.getFloat());
 
       case Type.HASH:
-        return this.pushAndReturnObject(new RubyHash(this.getPairs()))
+        object = new RubyHash([]);
+        this.#objects.push(object);
+        object.pairs = this.getPairs();
+        return object;
 
       case Type.HASH_WITH_DEFAULT_VALUE:
-        return this.pushAndReturnObject(
-          new RubyHash(this.getPairs(), this.getAny())
-        )
+        object = new RubyHash([]);
+        this.#objects.push(object);
+        object.pairs = this.getPairs();
+        object.defaultValue = this.getAny();
+        return object;
 
       case Type.OBJECT:
-        return this.pushAndReturnObject(
-          new RubyObject(this.getAny(), { instanceVariables: this.getPairs() })
-        )
+        object = new RubyObject(this.getAny());
+        this.#objects.push(object);
+        object.instanceVariables = this.getPairs();
+        return object;
 
       case Type.REGEXP:
-        return this.pushAndReturnObject(this.getRegExp())
+        return this.pushAndReturnObject(this.getRegExp());
 
       case Type.STRING:
-        return this.pushAndReturnObject(this.getString())
+        return this.pushAndReturnObject(this.getString());
 
       case Type.STRUCT:
-        return this.pushAndReturnObject(
-          new RubyStruct(this.getAny(), this.getPairs())
-        )
+        object = new RubyStruct(this.getAny(), []);
+        this.#objects.push(object);
+        object.pairs = this.getPairs();
+        return object;
 
       case Type.USER_CLASS:
-        return this.pushAndReturnObject(
-          new RubyObject(this.getAny(), { wrapped: this.getAny() })
-        )
+        object = new RubyObject(this.getAny());
+        this.#objects.push(object);
+        object.wrapped = this.getAny();
+        return object;
 
       case Type.USER_DEFINED:
-        return this.pushAndReturnObject(
-          new RubyObject(this.getAny(), { userDefined: this.getChunk() })
-        )
+        object = new RubyObject(this.getAny());
+        this.#objects.push(object);
+        object.userDefined = this.getChunk();
+        return object;
 
       case Type.USER_MARSHAL:
-        return this.pushAndReturnObject(
-          new RubyObject(this.getAny(), { userMarshal: this.getAny() })
-        )
+        object = new RubyObject(this.getAny());
+        this.#objects.push(object);
+        object.userMarshal = this.getAny();
+        return object;
     }
   }
 }
@@ -303,19 +302,19 @@ export class Parser {
  * in browser: file.arrayBuffer().then(buffer => load(buffer))
  */
 export function load(buffer: ArrayBuffer, options?: ParseOptions) {
-  const view = new DataView(buffer)
-  return new Parser(view, options).get()
+  const view = new DataView(buffer);
+  return new Parser(view, options).get();
 }
 
 /**
  * Load all marshal sections from buffer.
  */
 export function loadAll(buffer: ArrayBuffer, options?: ParseOptions) {
-  const view = new DataView(buffer)
-  const parser = new Parser(view, options)
-  const result = []
+  const view = new DataView(buffer);
+  const parser = new Parser(view, options);
+  const result = [];
   while (parser.hasNext()) {
-    result.push(parser.get())
+    result.push(parser.get());
   }
-  return result
+  return result;
 }

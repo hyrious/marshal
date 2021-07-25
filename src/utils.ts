@@ -12,6 +12,11 @@ export function bufferFromString(string: string) {
   return (encoder ??= new TextEncoder()).encode(string).buffer;
 }
 
+/** get string's utf-8 byte length */
+export function stringByteLength(string: string) {
+  return (encoder ??= new TextEncoder()).encode(string).byteLength;
+}
+
 /** convert `[[Symbol(a), 1]]` to `{ a: 1 }` */
 export function objectFromPairs(pairs: [symbol, any][]) {
   const object: Record<string, any> = {};

@@ -1,7 +1,7 @@
 import { FormatError } from "./parse";
 import { RubyClass, RubyClassOrModule, RubyHash, RubyModule, RubyObject, RubyStruct } from "./ruby";
 import { BignumSign, RegexpOption, Type } from "./types";
-import { ArrayBufferBuilder, concatArrayBuffers } from "./utils";
+import { ArrayBufferBuilder, concatArrayBuffers, stringByteLength } from "./utils";
 
 function dumpFixnum(builder: ArrayBufferBuilder, value: number) {
   if (value === 0) {
@@ -22,10 +22,8 @@ function dumpFixnum(builder: ArrayBufferBuilder, value: number) {
   }
 }
 
-let encoder: TextEncoder | undefined;
-
 function dumpString(builder: ArrayBufferBuilder, string: string) {
-  dumpFixnum(builder, (encoder ||= new TextEncoder()).encode(string).byteLength);
+  dumpFixnum(builder, stringByteLength(string));
   builder.appendString(string);
 }
 
@@ -38,7 +36,6 @@ function dumpPairs(builder: ArrayBufferBuilder, pairs: [any, any][]) {
 }
 
 function dumpAny(builder: ArrayBufferBuilder, value: any): ArrayBuffer {
-  encoder ||= new TextEncoder();
   if (value === true) {
     builder.appendString(Type.TRUE);
   } else if (value === false) {

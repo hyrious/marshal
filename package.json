@@ -18,7 +18,8 @@
   "types": "src/index.ts",
   "scripts": {
     "build": "esbuild-dev scripts/build.ts",
-    "test": "esbuild-dev test/index.ts"
+    "test": "esbuild-dev test/index.ts",
+    "wip": "esbuild-dev test/wip.ts"
   },
   "engines": {
     "node": ">=12"

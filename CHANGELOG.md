@@ -1,10 +1,14 @@
 # Changelog
 
+## 0.1.4
+
+- Fixed parsing circular objects.
+
 ## 0.1.3
 
 - Added `load` option `decodeString: false` and `wrapString: true`
 
-## 0.1.2]
+## 0.1.2
 
 - Fixed `dump(new RubyObject())` generates wrong marshal data
 

@@ -1,13 +1,13 @@
 import { test } from "uvu";
 import * as assert from "uvu/assert";
 import * as marshal from "../../src";
-import { ruby } from "../helper";
+import { rubyMarshalDump } from "../helper";
 
-test("trivial ruby values", async () => {
-  assert.is(marshal.load(await ruby(`nil`)), null);
-  assert.is(marshal.load(await ruby(`true`)), true);
-  assert.is(marshal.load(await ruby(`false`)), false);
-  assert.is(marshal.load(await ruby(`0`)), 0);
-  assert.equal(marshal.load(await ruby(`[]`)), []);
-  assert.instance(marshal.load(await ruby(`{}`)), marshal.RubyHash);
+test("trivial value", async () => {
+  assert.is(marshal.load(await rubyMarshalDump(`nil`)), null);
+  assert.is(marshal.load(await rubyMarshalDump(`true`)), true);
+  assert.is(marshal.load(await rubyMarshalDump(`false`)), false);
+  assert.is(marshal.load(await rubyMarshalDump(`0`)), 0);
+  assert.equal(marshal.load(await rubyMarshalDump(`[]`)), []);
+  assert.instance(marshal.load(await rubyMarshalDump(`{}`)), marshal.RubyHash);
 });

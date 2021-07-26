@@ -12,4 +12,7 @@ import "./parse/trivial";
 import "./parse/number";
 import "./parse/circular";
 
+import "./dump/trivial";
+import "./dump/number";
+
 test.run();

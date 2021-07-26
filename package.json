@@ -33,7 +33,7 @@
   "license": "MIT",
   "devDependencies": {
     "@hyrious/esbuild-dev": "^0.4.1",
-    "@types/node": "^16.4.2",
+    "@types/node": "^16.4.3",
     "esbuild": "^0.12.15",
     "uvu": "^0.5.1"
   }

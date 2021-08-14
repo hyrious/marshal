@@ -6,7 +6,7 @@ const common: BuildOptions = {
   bundle: true,
   sourcemap: true,
   sourcesContent: false,
-  target: "node12",
+  target: "node12.2",
 };
 
 build({
@@ -19,7 +19,6 @@ build({
   ...common,
   outfile: pkg.module,
   format: "esm",
-  target: "esnext",
 });
 
 build({

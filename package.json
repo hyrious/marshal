@@ -1,6 +1,6 @@
 {
   "name": "@hyrious/marshal",
-  "version": "0.1.4",
+  "version": "0.1.5-0",
   "description": "Ruby marshal for the browser and node.js",
   "repository": "hyrious/marshal",
   "main": "dist/index.js",
@@ -12,8 +12,11 @@
     "dist"
   ],
   "exports": {
-    "import": "./dist/index.mjs",
-    "require": "./dist/index.js"
+    "node": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "default": "./dist/index.mjs"
   },
   "types": "src/index.ts",
   "scripts": {
@@ -32,9 +35,9 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
-    "@hyrious/esbuild-dev": "^0.4.1",
-    "@types/node": "^16.4.3",
-    "esbuild": "^0.12.15",
+    "@hyrious/esbuild-dev": "^0.4.5",
+    "@types/node": "^16.6.1",
+    "esbuild": "^0.12.20",
     "uvu": "^0.5.1"
   }
 }

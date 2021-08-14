@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.5
+
+- Changed `exports` field in package.json so that it always use ESM when bundling to browser.
+
 ## 0.1.4
 
 - Fixed parsing circular objects.

@@ -1,20 +1,19 @@
 name: CI
 
-on:
-  push:
-    branches: ["*"]
-  pull_request:
-    branches: ["*"]
+on: [push, pull_request]
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-node@v2
         with:
-          node-version: "14.x"
-          registry-url: "https://registry.npmjs.org"
+          node-version: "16"
+          cache: "npm"
       - run: ruby -v
       - run: npm ci
       - run: npm t

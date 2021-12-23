@@ -71,10 +71,6 @@ Feel free to open an issue or submit a pr to improve this library.
 - [node-marshal](https://github.com/clayzermk1/node-marshal)
 - A [little](http://jakegoulding.com/blog/2013/01/15/a-little-dip-into-rubys-marshal-format)/[another](http://jakegoulding.com/blog/2013/01/16/another-dip-into-rubys-marshal-format)/[final](http://jakegoulding.com/blog/2013/01/20/a-final-dip-into-rubys-marshal-format) dip into Ruby's Marshal format
 
-### Todo
-
-- [Esbuild does not inline `const enum` now](https://github.com/evanw/esbuild/issues/128).
-
 ## License
 
 MIT @ [hyrious](https://github.com/hyrious)

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.6
+
+- Esbuild has inline enum, this package can be smaller and run quicker.
+
 ## 0.1.5
 
 - Changed `exports` field in package.json so that it always use ESM when bundling to browser.

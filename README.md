@@ -5,35 +5,62 @@ Ruby marshal for the browser and Node.js.
 ## Install
 
 ```
-npm i @hyrious/marshal
+npm add @hyrious/marshal
 ```
 
 ## Usage
 
 ```ts
-import { dump, load } from '@hyrious/marshal'
-dump(null) // ArrayBuffer { 04 08 30 }
-load(Uint8Array.of(4, 8, 0x30).buffer) // null
+import { dump, load } from "@hyrious/marshal";
+dump(null); // ArrayBuffer { 04 08 30 }
+load(Uint8Array.of(4, 8, 0x30).buffer); // null
+
+// in Node.js
+load(fs.readFileSync("data").buffer);
+
+// in Browser
+load(await file.arrayBuffer());
 ```
 
 ### Ruby &harr; JavaScript
 
-| ruby                    | javascript                                       |
-| ----------------------- | ------------------------------------------------ |
-| `nil`                   | `null`                                           |
-| `"string"`              | `"string"` (utf-8 only, no instance variables)   |
-| `:symbol`               | `Symbol.for('symbol')` (same above)              |
-| `123456` (Integer)      | `123456` (number)                                |
-| `123.456` (Float)       | `123.456` (number)                               |
-| `/cat/mixn`             | `/cat/im` (regexp, see comments below)           |
-| `[]`                    | `[]` (no instance variables)                     |
-| `{}`                    | `RubyHash { pairs: [] }` (no instance variables) |
-| `Object.new`            | `RubyObject { className: Symbol(Object) }`       |
-| `S = Struct.new; S.new` | `RubyStruct { className: Symbol(S), pairs: [] }` |
-| `Object`                | `RubyClass { name: 'Object' }`                   |
-| `Math`                  | `RubyModule { name: 'Math' }`                    |
+| Ruby                    | JavaScript                                         |
+| ----------------------- | -------------------------------------------------- |
+| `nil`                   | `null`                                             |
+| `"string"`              | `"string"` (utf-8 only, no instance variables)     |
+| `:symbol`               | `Symbol(symbol)` (same above)                      |
+| `123456` (Integer)      | `123456` (number)                                  |
+| `123.456` (Float)       | `123.456` (number)                                 |
+| `/cat/im`               | `/cat/im` (RegExp)                                 |
+| `[]`                    | `[]` (no instance variables)                       |
+| `{}`                    | `RubyHash { entries: [] }` (same above)            |
+| `Object.new`            | `RubyObject { className: Symbol(Object) }`         |
+| `S = Struct.new; S.new` | `RubyStruct { className: Symbol(S), members: [] }` |
+| `Object`                | `RubyClass { name: 'Object' }`                     |
+| `Math`                  | `RubyModule { name: 'Math' }`                      |
 
-Note about **RegExp**:
+#### String
+
+Ruby string can store both utf-8 and binary data, this is not the same in JavaScript.
+By default this library will always try to decode a ruby string to utf-8 js string.
+You can call `load()` with `decodeString: false` to make it return an `ArrayBuffer`
+if your input is binary data.
+
+```js
+// Marshal.dump("a")
+let buffer = load(Uint8Array.of(4, 8, 73, 34, 6, 97, 6, 58, 6, 69, 84).buffer, {
+  decodeString: false,
+});
+// => ArrayBuffer { 04 08 ... }
+new TextDecoder().decode(buffer);
+// => "a"
+```
+
+#### Symbol
+
+You can use `Symbol.keyFor(sym)` to get a symbol's name in string.
+
+#### RegExp
 
 JavaScript RegExp is different from Ruby Regexp. Only these flags are preserved:
 
@@ -42,31 +69,27 @@ JavaScript RegExp is different from Ruby Regexp. Only these flags are preserved:
 | `i`  | ignore case |
 | `m`  | multi-line  |
 
-### FAQ
+#### Hash
 
-**How to pass a `Buffer` in Node.js ?**
+Ruby hash is more like JavaScript's `Map` instead of `{}`, but that may lose the keys' order.
+So this library will return a `RubyHash` wrapper by default. You can call `load()` with
+`hashToJS: true` to make it return a plain js object. There's also a `hashToMap`.
 
-`buffer.buffer`.
+```js
+// Marshal.dump({ a: 1 })
+load(Uint8Array.of(4, 8, 123, 6, 58, 6, 97, 105, 6).buffer, {
+  hashToJS: true,
+});
+// => { a: 1 }
+```
 
-**How to get a binary string from ArrayBuffer (and reverse back) ?**
+### [API Reference](./docs/api.md)
 
-You can use TextEncoder/TextDecoder. But please no, you won't expect a USVString at the most of the time.
-All string/symbol in ruby will be converted to js string automatically.
-
-**Do you support [Stream](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream) API ?**
-
-Because the stream api in the browser and in node.js is not similar at all, it should be separated into 2 files and add `exports` respectively. I'm not in a hurry to implement this feature. If you really need this please make a pr/issue to let me know.
-
-**Do you support [BigInt](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/BigInt) ?**
-
-Currently not, but JavaScript's `number` is big enough to store up to `2^53 - 1`.
-
-**Do you support ...?**
-
-Feel free to open an issue or submit a pr to improve this library.
+### [FAQ](./docs/faq.md)
 
 ### Reference
 
+- [marshal.c](https://github.com/ruby/ruby/blob/master/marshal.c)
 - [Marshal Format](https://github.com/ruby/ruby/blob/master/doc/marshal.rdoc) (official doc)
 - [node-marshal](https://github.com/clayzermk1/node-marshal)
 - A [little](http://jakegoulding.com/blog/2013/01/15/a-little-dip-into-rubys-marshal-format)/[another](http://jakegoulding.com/blog/2013/01/16/another-dip-into-rubys-marshal-format)/[final](http://jakegoulding.com/blog/2013/01/20/a-final-dip-into-rubys-marshal-format) dip into Ruby's Marshal format

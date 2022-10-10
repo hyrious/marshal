@@ -1,8 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Refactored a lot to make this package smaller.
+- Fix `T_EXTENDED` parse and dump behavior.
+- Support dump circular objects.
+
 ## 0.1.6
 
-- Esbuild has inline enum, this package can be smaller and run quicker.
+- esbuild has inline enum, this package can be smaller and run quicker.
 
 ## 0.1.5
 

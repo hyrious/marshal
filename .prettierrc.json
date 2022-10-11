@@ -1,0 +1,6 @@
+{
+  "tabWidth": 2,
+  "endOfLine": "auto",
+  "arrowParens": "avoid",
+  "printWidth": 110
+}

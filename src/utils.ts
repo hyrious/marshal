@@ -1,84 +1,35 @@
+import isPlainObject from "is-plain-obj";
+import { RE_IGNORECASE, RE_MULTILINE } from "./constants";
+import { RubyHash, RubyString } from "./ruby";
+
 let decoder: TextDecoder | undefined;
-
-/** get string from array buffer */
-export function stringFromBuffer(buffer: ArrayBuffer) {
-  return (decoder ??= new TextDecoder()).decode(buffer);
+export function decode(buffer: ArrayBuffer) {
+  return (decoder ||= new TextDecoder()).decode(buffer);
 }
-
 let encoder: TextEncoder | undefined;
-
-/** convert string to (utf-8) array buffer */
-export function bufferFromString(string: string) {
-  return (encoder ??= new TextEncoder()).encode(string).buffer;
+export function encode(string: string) {
+  return (encoder ||= new TextEncoder()).encode(string);
 }
 
-/** get string's utf-8 byte length */
-export function stringByteLength(string: string) {
-  return (encoder ??= new TextEncoder()).encode(string).byteLength;
+// is the input js object can be dumped to a ruby string?
+export function is_string(a: any): a is ArrayBuffer | string | RubyString {
+  return typeof a === "string" || a instanceof ArrayBuffer || a instanceof RubyString;
 }
 
-/** convert `[[Symbol(a), 1]]` to `{ a: 1 }` */
-export function objectFromPairs(pairs: [symbol, any][]) {
-  const object: Record<string, any> = {};
-  for (const [key, value] of pairs) {
-    object[Symbol.keyFor(key)!] = value;
-  }
-  return object;
+export function string_to_buffer(a: ArrayBuffer | string | RubyString) {
+  if (a instanceof ArrayBuffer) return a;
+  if (typeof a === "string") return encode(a);
+  return a.buffer;
 }
 
-/** convert `{ a: 1 }` to `[[Symbol(a), 1]]` */
-export function pairsFromObject(object: Record<string, any>) {
-  const pairs: [symbol, any][] = [];
-  for (const key of Object.keys(object)) {
-    pairs.push([Symbol.for(key), object[key]]);
-  }
-  return pairs;
+export function flags_to_uint8(f: string) {
+  let i = 0;
+  if (f.includes("i")) i |= RE_IGNORECASE;
+  if (f.includes("m")) i |= RE_MULTILINE;
+  return i;
 }
 
-export function concatArrayBuffers(...args: ArrayBuffer[]) {
-  if (args.length === 0) return undefined;
-  const totalLength = args.reduce((a, b) => a + b.byteLength, 0);
-  const result = new Uint8Array(totalLength);
-  let length = 0;
-  for (let buffer of args) {
-    result.set(new Uint8Array(buffer), length);
-    length += buffer.byteLength;
-  }
-  return result.buffer;
-}
-
-export class ArrayBufferBuilder {
-  #data = new Uint8Array(16);
-  #length = 0;
-
-  public get length() {
-    return this.#length;
-  }
-
-  public get buffer() {
-    return this.#data.buffer.slice(0, this.#length);
-  }
-
-  private resize() {
-    const data = new Uint8Array(this.#data.byteLength << 1);
-    data.set(this.#data);
-    this.#data = data;
-  }
-
-  public appendString(string: string) {
-    const array = (encoder ??= new TextEncoder()).encode(string);
-    if (this.#length + array.byteLength > this.#data.byteLength) {
-      this.resize();
-    }
-    this.#data.set(array, this.#length);
-    this.#length += array.byteLength;
-  }
-
-  public appendArray(array: ArrayLike<number>) {
-    if (this.#length + array.length > this.#data.byteLength) {
-      this.resize();
-    }
-    this.#data.set(array, this.#length);
-    this.#length += array.length;
-  }
+// is the input js object can be dumped to a ruby hash?
+export function is_hash(a: any): a is Record<string, any> | Map<any, any> | RubyHash {
+  return a instanceof Map || a instanceof RubyHash || isPlainObject(a);
 }

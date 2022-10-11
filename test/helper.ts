@@ -2,6 +2,13 @@ import cp from "child_process";
 import fs from "fs";
 import os from "os";
 import path from "path";
+import { suite, Test } from "uvu";
+
+export function describe(title: string, callback: (test: Test) => void) {
+  const test = suite(title);
+  callback(test);
+  test.run();
+}
 
 /**
  * @example
@@ -32,7 +39,10 @@ export async function rubyMarshalDump(code: string) {
  * @example
  * rubyMarshalLoad(marshal.dump(null)) => 'nil'
  */
-export async function rubyMarshalLoad(buffer: ArrayBuffer) {
+export async function rubyMarshalLoad(buffer: ArrayBuffer, preamble = "", suffix = "p a") {
   const array = Array.from(new Uint8Array(buffer));
-  return (await rubyEval(`p Marshal.load [${array}].pack 'C*'`)).trim();
+  let code = `a = Marshal.load [${array}].pack 'C*'`;
+  if (preamble) code = preamble + "; " + code;
+  if (suffix) code += "; " + suffix;
+  return (await rubyEval(code)).trim();
 }

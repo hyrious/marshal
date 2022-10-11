@@ -1,0 +1,19 @@
+{
+    "words": [
+        "Bignum",
+        "Fixnum",
+        "IGNORECASE",
+        "IVAR",
+        "klass",
+        "mixn",
+        "outfile",
+        "RGSS",
+        "rvdata",
+        "Struct",
+        "treeshake",
+        "tsup",
+        "UCLASS",
+        "USERDEF",
+        "USERMARSHAL"
+    ]
+}

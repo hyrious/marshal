@@ -1,294 +1,294 @@
-import {
-  RubyClass,
-  RubyClassOrModule,
-  RubyHash,
-  RubyModule,
-  RubyObject,
-  RubyString,
-  RubyStruct,
-} from "./ruby";
-import { BignumSign, RegexpOption, Type } from "./types";
-import { stringFromBuffer } from "./utils";
-
-/** It occurs when the marshal data is not valid. */
-export class FormatError extends SyntaxError {
-  constructor(message?: string) {
-    super(message);
-    this.name = this.constructor.name;
-  }
-}
+import * as constants from "./constants";
+import * as ruby from "./ruby";
+import { decode, is_string } from "./utils";
 
 export interface ParseOptions {
   /**
-   * If `false`, don't convert buffer to string.
-   *
-   * This is useful to load files like `Scripts.rvdata2`.
-   *
-   * @default true
+   * If `false`, don't decode buffer to string.
+   * Default: true
    */
   decodeString?: boolean;
 
   /**
    * If `true` and `decodeString: false`, wrap the string in `RubyString`.
-   *
-   * @default false
+   * Default: false
    */
   wrapString?: boolean;
+
+  /**
+   * If `true`, return a plain js object instead of `RubyHash`.
+   * Note that the keys of the hash must be symbol or string.
+   * Default: false
+   */
+  hashToJS?: boolean;
+
+  /**
+   * If `true`, return a js map instead of `RubyHash`.
+   * Note that the keys of the hash must be symbol or string.
+   * Default: false
+   */
+  hashToMap?: boolean;
 }
 
-/**
- * Call `get()` to read once, one file can store multiple marshal data.
- * @example
- * new Parser(dataView).get()
- */
+const default_options: Required<ParseOptions> = {
+  decodeString: true,
+  wrapString: false,
+  hashToJS: false,
+  hashToMap: false,
+};
+
+/** This class holds parser state */
 export class Parser {
-  pos = 0;
-  options: Required<ParseOptions>;
-  #symbols: Symbol[] = [];
-  /** except true, false, nil, Fixnums and Symbols */
-  #objects: any[] = [];
+  declare pos_: number;
+  declare view_: DataView;
+  declare symbols_: symbol[];
+  declare objects_: any[];
+  declare options_: Required<ParseOptions>;
 
-  constructor(
-    public view: DataView,
-    { decodeString = true, wrapString = false }: ParseOptions = {}
-  ) {
-    this.options = { decodeString, wrapString };
+  constructor(view: DataView, options?: ParseOptions) {
+    this.pos_ = 0;
+    this.view_ = view;
+    this.options_ = Object.assign(default_options, options);
   }
 
-  public hasNext() {
-    return this.pos < this.view.byteLength;
+  hasNext() {
+    return this.pos_ < this.view_.byteLength;
   }
 
-  private getBytes(length: number) {
-    const { view, pos } = this;
-    this.pos += length;
-    return view.buffer.slice(pos, pos + length);
-  }
-
-  private getFixnum() {
-    const t = this.view.getInt8(this.pos++);
-    if (t === 0) {
-      return 0;
-    } else if (-4 <= t && t <= 4) {
-      const n = Math.abs(t);
-      const shift = (4 - n) * 8;
-      const bytes = new Uint8Array(this.getBytes(n));
-      let a = 0;
-      for (let index = n - 1; index >= 0; --index) {
-        a = (a << 8) | bytes[index];
-      }
-      return t > 0 ? a : (a << shift) >> shift;
-    } else {
-      return t > 0 ? t - 5 : t + 5;
+  get() {
+    if (this.view_.getInt16(this.pos_) !== 0x408) {
+      throw new TypeError("incompatible marshal file format (can't be read)");
     }
+    this.pos_ += 2;
+    this.symbols_ = [];
+    this.objects_ = [];
+    return read_any(this);
   }
+}
 
-  private getChunk() {
-    return this.getBytes(this.getFixnum());
-  }
+function read_bytes(p: Parser, n: number) {
+  const begin = p.pos_;
+  p.pos_ += n;
+  return p.view_.buffer.slice(begin, p.pos_);
+}
 
-  private getString(decode: true): string;
-  private getString(decode?: boolean): ArrayBuffer | string;
-  private getString(decode = this.options.decodeString) {
-    const chunk = this.getChunk();
-    if (decode) {
-      return stringFromBuffer(chunk);
-    } else {
-      if (this.options.wrapString) {
-        return new RubyString(chunk);
-      } else {
-        return chunk;
-      }
-    }
-  }
-
-  private getSymbol() {
-    return Symbol.for(this.getString(true));
-  }
-
-  private pushAndReturnObject(object: any) {
-    this.#objects.push(object);
-    return object;
-  }
-
-  private getPairs() {
-    const count = this.getFixnum();
-    const pairs: [any, any][] = [];
-    for (let index = 0; index < count; ++index) {
-      const key = this.getAny();
-      const value = this.getAny();
-      pairs.push([key, value]);
-    }
-    return pairs;
-  }
-
-  private getBignum() {
-    const sign = this.view.getUint8(this.pos++) as BignumSign;
-    const count = this.getFixnum() * 2;
-    const bytes = new Uint8Array(this.getBytes(count));
+function read_fixnum(p: Parser) {
+  const t = p.view_.getInt8(p.pos_++);
+  if (t === 0) {
+    return 0;
+  } else if (-4 <= t && t <= 4) {
+    const n = Math.abs(t);
+    const shift = (4 - n) * 8;
+    const bytes = new Uint8Array(read_bytes(p, n));
     let a = 0;
-    for (let index = 0; index < count; ++index) {
-      a += bytes[index] * 2 ** (index * 8);
+    for (let i = n - 1; i >= 0; --i) {
+      a = (a << 8) | bytes[i];
     }
-    return sign === BignumSign.POSITIVE ? a : -a;
+    return t > 0 ? a : (a << shift) >> shift;
+  } else {
+    return t > 0 ? t - 5 : t + 5;
   }
+}
 
-  private getFloat() {
-    const string = this.getString();
-    switch (string) {
-      case "inf":
-        return Number.POSITIVE_INFINITY;
-      case "-inf":
-        return Number.NEGATIVE_INFINITY;
-      case "nan":
-        return Number.NaN;
-      default:
-        return Number(string);
+function read_chunk(p: Parser) {
+  return read_bytes(p, read_fixnum(p));
+}
+
+function read_string(p: Parser, d: true): string;
+function read_string(p: Parser, d?: boolean): ArrayBuffer | string | ruby.RubyString;
+function read_string(p: Parser, d = p.options_.decodeString) {
+  const chunk = read_chunk(p);
+  if (d) return decode(chunk);
+  else if (p.options_.wrapString) return new ruby.RubyString(chunk);
+  else return chunk;
+}
+
+function read_symbol(p: Parser) {
+  return Symbol.for(read_string(p, true));
+}
+
+function _push_and_return_object<T = any>(p: Parser, object: T): T {
+  p.objects_.push(object);
+  return object;
+}
+
+function _push_and_return_symbol(p: Parser, symbol: symbol) {
+  p.symbols_.push(symbol);
+  return symbol;
+}
+
+function read_entries(p: Parser) {
+  const entries: [any, any][] = [];
+  let n = read_fixnum(p);
+  while (n--) entries.push([read_any(p), read_any(p)]);
+  return entries;
+}
+
+function read_bignum(p: Parser) {
+  const sign = p.view_.getUint8(p.pos_++);
+  const n = read_fixnum(p) * 2;
+  const bytes = new Uint8Array(read_bytes(p, n));
+  let a = 0;
+  for (let i = 0; i < n; ++i) {
+    a += bytes[i] * 2 ** (i * 8);
+  }
+  return sign === constants.B_POSITIVE ? a : -a;
+}
+
+function read_float(p: Parser) {
+  const s = read_string(p);
+  return s === "inf" ? 1 / 0 : s === "-inf" ? -1 / 0 : s === "nan" ? NaN : Number(s);
+}
+
+function read_regexp(p: Parser) {
+  const source = read_string(p, true);
+  const type = p.view_.getUint8(p.pos_++);
+  let flag = "";
+  if (type & constants.RE_IGNORECASE) flag += "i";
+  if (type & constants.RE_MULTILINE) flag += "m";
+  return new RegExp(source, flag);
+}
+
+function read_array(p: Parser, n: number, to: any[]) {
+  for (let i = 0; i < n; ++i) {
+    to[i] = read_any(p);
+  }
+  return to;
+}
+
+function read_any(p: Parser): any {
+  const t = p.view_.getUint8(p.pos_++);
+
+  switch (t) {
+    case constants.T_TRUE:
+      return true;
+
+    case constants.T_FALSE:
+      return false;
+
+    case constants.T_NIL:
+      return null;
+
+    case constants.T_FIXNUM:
+      return read_fixnum(p);
+
+    case constants.T_SYMBOL:
+      return _push_and_return_symbol(p, read_symbol(p));
+
+    case constants.T_SYMLINK:
+      return p.symbols_[read_fixnum(p)];
+
+    case constants.T_LINK:
+      return p.objects_[read_fixnum(p)];
+
+    case constants.T_IVAR: {
+      const object: any = _push_and_return_object(p, read_any(p));
+      const entries = read_entries(p);
+      if (object instanceof ruby.RubyBaseObject) {
+        object.instanceVariables = entries;
+      } else if (is_string(object)) {
+        // don't error on strings because they could have an ivar of { encoding: 'utf-8' }
+      } else {
+        console.warn("cannot populate instance variables to non-RubyObject: " + object);
+      }
+      return object;
     }
-  }
 
-  private getRegExp() {
-    const source = this.getString(true);
-    const type = this.view.getUint8(this.pos++);
-    let flags = "";
-    if (type & RegexpOption.IGNORECASE) flags += "i";
-    if (type & RegexpOption.MULTILINE) flags += "m";
-    return new RegExp(source, flags);
-  }
-
-  public get() {
-    if (this.view.getInt16(this.pos) !== 0x408) {
-      throw new FormatError("unsupported marshal version, expecting 4.8");
+    // sequence ['e', :N, 'e', :M, 'o', :A, 0] produces #<A extends=[N, M]>
+    // sequence ['e', :M, 'e', :C, 'o', ';', 1(6), 0] produces #<C> whose singleton class extends [M]
+    // The 'singleton class' case is determined by whether last(extends) is a RubyClass,
+    // because we do not decode a ruby class to js class, we cannot know this info,
+    // so we just return a RubyObject whose 'extends' is [:N, :M, :C],
+    // one can still construct the real object by testing the last symbol's kind.
+    case constants.T_EXTENDED: {
+      const extends_: symbol[] = [read_any(p)];
+      while (p.view_.getUint8(p.pos_) === constants.T_EXTENDED) {
+        p.pos_++;
+        extends_.push(read_any(p));
+      }
+      const object: any = _push_and_return_object(p, read_any(p));
+      if (object instanceof ruby.RubyBaseObject) {
+        object.extends = extends_;
+      } else {
+        console.warn("cannot populate extends to non-RubyObject: " + object);
+      }
+      return object;
     }
-    this.pos += 2;
-    return this.getAny();
-  }
 
-  private getAny(): any {
-    const t = this.view.getUint8(this.pos++);
-    const chr = String.fromCharCode(t) as Type;
+    case constants.T_ARRAY: {
+      const n = read_fixnum(p);
+      const array = _push_and_return_object(p, new Array(n));
+      return read_array(p, n, array);
+    }
 
-    let symbol: symbol, object: any, temp: any;
-    switch (chr) {
-      case Type.TRUE:
-        return true;
+    case constants.T_BIGNUM:
+      return _push_and_return_object(p, read_bignum(p));
 
-      case Type.FALSE:
-        return false;
+    case constants.T_CLASS:
+      return _push_and_return_object(p, new ruby.RubyClass(read_string(p, true)));
 
-      case Type.NIL:
-        return null;
+    case constants.T_MODULE:
+      return _push_and_return_object(p, new ruby.RubyModule(read_string(p, true)));
 
-      case Type.FIXNUM:
-        return this.getFixnum();
+    case constants.T_MODULE_OLD:
+      return _push_and_return_object(p, new ruby.RubyClassOrModule(read_string(p, true)));
 
-      case Type.SYMBOL:
-        symbol = this.getSymbol();
-        this.#symbols.push(symbol);
-        return symbol;
+    case constants.T_DATA: {
+      const object = _push_and_return_object(p, new ruby.RubyObject(read_any(p)));
+      object.data = read_any(p);
+      return object;
+    }
 
-      case Type.SYMBOL_REF:
-        return this.#symbols[this.getFixnum()];
+    case constants.T_FLOAT:
+      return _push_and_return_object(p, read_float(p));
 
-      case Type.OBJECT_REF:
-        return this.#objects[this.getFixnum()];
+    case constants.T_HASH: {
+      const hash = _push_and_return_object(p, new ruby.RubyHash([]));
+      hash.entries = read_entries(p);
+      return p.options_.hashToJS ? hash.toJS() : p.options_.hashToMap ? hash.toMap() : hash;
+    }
 
-      case Type.IVAR:
-        object = this.getAny();
-        this.#objects.push(object);
-        temp = this.getPairs();
-        if (object instanceof RubyObject) {
-          object.instanceVariables = temp;
-        }
-        return object;
+    case constants.T_HASH_DEF: {
+      const hash = _push_and_return_object(p, new ruby.RubyHash([]));
+      hash.entries = read_entries(p);
+      hash.defaultValue = read_any(p);
+      return p.options_.hashToJS ? hash.toJS() : p.options_.hashToMap ? hash.toMap() : hash;
+    }
 
-      case Type.EXTEND:
-        object = this.getAny();
-        this.#objects.push(object);
-        temp = this.getAny();
-        if (object instanceof RubyObject) {
-          object.extends = temp;
-        }
-        return object;
+    case constants.T_OBJECT: {
+      const object = _push_and_return_object(p, new ruby.RubyObject(read_any(p)));
+      object.instanceVariables = read_entries(p);
+      return object;
+    }
 
-      case Type.ARRAY:
-        const count = this.getFixnum();
-        const array: any[] = [];
-        this.#objects.push(array);
-        for (let index = 0; index < count; ++index) {
-          array.push(this.getAny());
-        }
-        return array;
+    case constants.T_REGEXP:
+      return _push_and_return_object(p, read_regexp(p));
 
-      case Type.BIGNUM:
-        return this.pushAndReturnObject(this.getBignum());
+    case constants.T_STRING:
+      return _push_and_return_object(p, read_string(p));
 
-      case Type.CLASS:
-        return this.pushAndReturnObject(new RubyClass(this.getString(true)));
+    case constants.T_STRUCT: {
+      const struct = _push_and_return_object(p, new ruby.RubyStruct(read_any(p), []));
+      struct.members = read_entries(p);
+      return struct;
+    }
 
-      case Type.MODULE:
-        return this.pushAndReturnObject(new RubyModule(this.getString(true)));
+    case constants.T_UCLASS: {
+      const object = _push_and_return_object(p, new ruby.RubyObject(read_any(p)));
+      object.wrapped = read_any(p);
+      return object;
+    }
 
-      case Type.CLASS_OR_MODULE:
-        return this.pushAndReturnObject(new RubyClassOrModule(this.getString(true)));
+    case constants.T_USERDEF: {
+      const object = _push_and_return_object(p, new ruby.RubyObject(read_any(p)));
+      object.userDefined = read_chunk(p);
+      return object;
+    }
 
-      case Type.DATA:
-        object = new RubyObject(this.getAny());
-        this.#objects.push(object);
-        object.data = this.getAny();
-        return object;
-
-      case Type.FLOAT:
-        return this.pushAndReturnObject(this.getFloat());
-
-      case Type.HASH:
-        object = new RubyHash([]);
-        this.#objects.push(object);
-        object.pairs = this.getPairs();
-        return object;
-
-      case Type.HASH_WITH_DEFAULT_VALUE:
-        object = new RubyHash([]);
-        this.#objects.push(object);
-        object.pairs = this.getPairs();
-        object.defaultValue = this.getAny();
-        return object;
-
-      case Type.OBJECT:
-        object = new RubyObject(this.getAny());
-        this.#objects.push(object);
-        object.instanceVariables = this.getPairs();
-        return object;
-
-      case Type.REGEXP:
-        return this.pushAndReturnObject(this.getRegExp());
-
-      case Type.STRING:
-        return this.pushAndReturnObject(this.getString());
-
-      case Type.STRUCT:
-        object = new RubyStruct(this.getAny(), []);
-        this.#objects.push(object);
-        object.pairs = this.getPairs();
-        return object;
-
-      case Type.USER_CLASS:
-        object = new RubyObject(this.getAny());
-        this.#objects.push(object);
-        object.wrapped = this.getAny();
-        return object;
-
-      case Type.USER_DEFINED:
-        object = new RubyObject(this.getAny());
-        this.#objects.push(object);
-        object.userDefined = this.getChunk();
-        return object;
-
-      case Type.USER_MARSHAL:
-        object = new RubyObject(this.getAny());
-        this.#objects.push(object);
-        object.userMarshal = this.getAny();
-        return object;
+    case constants.T_USERMARSHAL: {
+      const object = _push_and_return_object(p, new ruby.RubyObject(read_any(p)));
+      object.userMarshal = read_any(p);
+      return object;
     }
   }
 }
@@ -297,9 +297,10 @@ export class Parser {
  * Load one marshal section from buffer.
  *
  * If you need to load multiple times (like RGSS1), use `loadAll`.
- * @example
- * in node.js: load(fs.readFileSync('Scripts.rvdata2').buffer)
- * in browser: file.arrayBuffer().then(buffer => load(buffer))
+ * ```js
+ * load(fs.readFileSync('Scripts.rvdata2').buffer)
+ * file.arrayBuffer().then(buffer => load(buffer))
+ * ```
  */
 export function load(buffer: ArrayBuffer, options?: ParseOptions) {
   const view = new DataView(buffer);

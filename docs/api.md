@@ -17,13 +17,16 @@ Parse a Ruby marshal data to a JavaScript value.
   - `decodeString` {Boolean} Whether to decode a Ruby string to UTF-8 JavaScript String.
     If `false`, the parser will return `ArrayBuffer` for these Ruby strings.
     Default: `true`.
+
   - `wrapString` {Boolean} Whether to wrap the Ruby string in a `RubyString` class.
     This options only works when `decodeString` is `false`.
     Default: `false`.
+
   - `hashToJS` {Boolean} Whether to convert the Ruby hash to a JavaScript object.
     Because Ruby hash is ordered and its keys can be any type, the parser returns a `RubyHash` wrapper by default.
     If `true`, be care that the Ruby hash keys must be a string or a symbol. Otherwise a `TypeError` will be thrown.
     Default: `false`.
+
   - `hashToMap` {Boolean} Similar to `hashToJS`, this options will convert the Ruby hash to a JavaScript Map object.
     The Ruby hash keys can be any value. But still be careful that the order is lost.
     Default: `false`.

@@ -1,0 +1,14 @@
+{
+  "include": ["."],
+  "compilerOptions": {
+    "noEmit": true,
+    "module": "ESNext",
+    "target": "ESNext",
+    "lib": ["ESNext", "DOM"],
+    "esModuleInterop": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "stripInternal": true,
+    "moduleResolution": "node"
+  }
+}

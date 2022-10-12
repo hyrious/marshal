@@ -1,6 +1,6 @@
 import * as constants from "./constants";
 import * as ruby from "./ruby";
-import { encode, flags_to_uint8, is_hash, is_string, string_to_buffer } from "./utils";
+import { encode, flags_to_uint8, has_ivar, is_hash, is_string, string_to_buffer } from "./utils";
 
 /** This class holds the dump state (object ref, symbol ref) */
 export class Dumper {
@@ -55,11 +55,6 @@ function w_bytes(d: Dumper, arr: ArrayLike<number>) {
 
 function w_string(d: Dumper, s: string) {
   w_bytes(d, encode(s));
-}
-
-function w_short(d: Dumper, n: number) {
-  w_byte(d, (n >> 0) & 0xff);
-  w_byte(d, (n >> 8) & 0xff);
 }
 
 function w_long(d: Dumper, n: number) {
@@ -131,8 +126,8 @@ function w_extended(d: Dumper, extends_: symbol[]) {
   });
 }
 
-function w_class(d: Dumper, type: number, a: ruby.RubyObject | ruby.RubyStruct, skip_extends: boolean) {
-  if (!skip_extends && a.extends) w_extended(d, a.extends);
+function w_class(d: Dumper, type: number, a: ruby.RubyObject | ruby.RubyStruct) {
+  if (a.extends) w_extended(d, a.extends);
   w_byte(d, type);
   w_symbol(d, a.className);
 }
@@ -152,25 +147,23 @@ function w_ivar(d: Dumper, a: ruby.RubyBaseObject) {
       w_symbol(d, key);
       w_object(d, value);
     });
+  } else {
+    w_long(d, 0);
   }
 }
 
 function w_bignum(d: Dumper, a: number) {
   w_byte(d, constants.T_BIGNUM);
   w_byte(d, a < 0 ? constants.B_NEGATIVE : constants.B_POSITIVE);
-  let n = 0;
-  {
-    let t = a;
-    while (t) {
-      n++;
-      t = (t / 0x10000) | 0; // t >>= 16
-    }
-  }
-  w_long(d, n);
-  for (let i = 0; i < n; ++i) {
-    w_short(d, a & 0xffff);
-    a = (a / 0x10000) | 0; // a >>= 16
-  }
+  const buffer: number[] = [];
+  a = Math.abs(a);
+  do {
+    buffer.push(a & 0xff);
+    a = Math.floor(a / 256);
+  } while (a);
+  if (buffer.length % 2) buffer.push(0);
+  w_long(d, buffer.length >> 1);
+  w_buffer(d, buffer);
 }
 
 function w_remember(d: Dumper, obj: any) {
@@ -188,7 +181,7 @@ function w_object(d: Dumper, obj: any) {
     w_byte(d, constants.T_FALSE);
   } else if (typeof obj === "number") {
     if (Number.isInteger(obj)) {
-      if (-0x40000000 <= obj && obj <= 0xffffffff) {
+      if (-0x40000000 <= obj && obj < 0x40000000) {
         w_byte(d, constants.T_FIXNUM);
         w_long(d, obj);
       } else {
@@ -207,23 +200,22 @@ function w_object(d: Dumper, obj: any) {
     w_long(d, d.objects_.get(obj)!);
   } else if (obj instanceof ruby.RubyObject) {
     w_remember(d, obj);
-    if (obj.extends) w_extended(d, obj.extends);
     if (obj.data) {
-      w_class(d, constants.T_DATA, obj, true);
+      w_class(d, constants.T_DATA, obj);
       w_object(d, obj.data);
     } else if (obj.wrapped !== undefined) {
       w_uclass(d, obj);
       w_object(d, obj.wrapped);
     } else if (obj.userDefined) {
-      if (obj.instanceVariables) w_byte(d, constants.T_IVAR);
-      w_class(d, constants.T_USERDEF, obj, true);
+      if (has_ivar(obj)) w_byte(d, constants.T_IVAR);
+      w_class(d, constants.T_USERDEF, obj);
       w_bytes(d, new Uint8Array(obj.userDefined));
-      w_ivar(d, obj);
+      if (has_ivar(obj)) w_ivar(d, obj);
     } else if (obj.userMarshal) {
-      w_class(d, constants.T_USERMARSHAL, obj, true);
+      w_class(d, constants.T_USERMARSHAL, obj);
       w_object(d, obj.userMarshal);
     } else {
-      w_class(d, constants.T_OBJECT, obj, true);
+      w_class(d, constants.T_OBJECT, obj);
       w_ivar(d, obj);
     }
   } else if (Array.isArray(obj)) {
@@ -246,7 +238,7 @@ function w_object(d: Dumper, obj: any) {
     w_string(d, obj.name);
   } else if (obj instanceof ruby.RubyStruct) {
     w_remember(d, obj);
-    w_class(d, constants.T_STRUCT, obj, false);
+    w_class(d, constants.T_STRUCT, obj);
     w_long(d, obj.members.length);
     obj.members.forEach(([key, value]) => {
       w_symbol(d, key);
@@ -260,10 +252,12 @@ function w_object(d: Dumper, obj: any) {
     w_byte(d, flags_to_uint8(obj.flags));
   } else if (is_string(obj)) {
     w_remember(d, obj);
+    // not implemented instance variables and user wrapped string
     w_byte(d, constants.T_STRING);
     w_bytes(d, new Uint8Array(string_to_buffer(obj)));
   } else if (is_hash(obj)) {
     w_remember(d, obj);
+    // not implemented instance variables and user wrapped hash
     const hash = ruby.RubyHash.from(obj);
     w_byte(d, hash.defaultValue === undefined ? constants.T_HASH : constants.T_HASH_DEF);
     w_long(d, hash.entries.length);
@@ -271,6 +265,7 @@ function w_object(d: Dumper, obj: any) {
       w_object(d, key);
       w_object(d, value);
     });
+    if (hash.defaultValue !== undefined) w_object(d, hash.defaultValue);
   } else {
     throw new TypeError("can't dump " + obj);
   }

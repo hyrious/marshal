@@ -1,2 +1,3 @@
-import "./parse";
+import "./load";
 import "./dump";
+import "./spec";

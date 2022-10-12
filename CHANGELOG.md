@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.1
+
+- Fix dump Bignum logic.
+- Fix dump Hash with default value.
+- Fix instance variables logic.
+- Add `RubyRange`, `RubyTime` helper classes.
+
 ## 0.2.0
 
 - Refactored a lot to make this package smaller.

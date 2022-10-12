@@ -12,11 +12,7 @@ export class RubyBaseObject {
   /** `e`, extends module */
   declare extends?: symbol[];
   /** `I` or `o` */
-  declare instanceVariables: [symbol, any][];
-
-  constructor() {
-    this.instanceVariables = [];
-  }
+  declare instanceVariables?: [symbol, any][];
 }
 
 export class RubyString extends RubyBaseObject {
@@ -109,5 +105,40 @@ export class RubyModule extends RubyBaseObject {
 export class RubyClassOrModule extends RubyBaseObject {
   constructor(public name: string) {
     super();
+  }
+}
+
+/** 1..2 */
+export class RubyRange extends RubyStruct {
+  constructor(begin: number | null, end: number | null, exclusive: boolean) {
+    super(Symbol.for("Range"), [
+      [Symbol.for("excl"), exclusive],
+      [Symbol.for("begin"), begin],
+      [Symbol.for("end"), end],
+    ]);
+  }
+}
+
+export class RubyTime extends RubyObject {
+  constructor(date: Date | number, zone = "UTC", offset = 0) {
+    if (typeof date === "number") date = new Date(date);
+    const year = date.getUTCFullYear();
+    const mon = date.getUTCMonth();
+    const day = date.getUTCDate();
+    const hour = date.getUTCHours();
+    const min = date.getUTCMinutes();
+    const sec = date.getUTCSeconds();
+    const u_sec = date.getUTCMilliseconds();
+    const p = 0xc0000000 + (((year - 1900) << 14) | ((mon - 1) << 14) | (day << 5) | hour);
+    const s = (min << 26) | (sec << 20) | u_sec;
+
+    super(Symbol.for("Time"), {
+      userDefined: Uint32Array.of(p, s).buffer,
+      instanceVariables: [[Symbol.for("zone"), zone]],
+    });
+
+    if (offset) {
+      this.instanceVariables!.unshift([Symbol.for("offset"), offset]);
+    }
   }
 }

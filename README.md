@@ -51,7 +51,7 @@ if your input is binary data.
 let buffer = load(Uint8Array.of(4, 8, 73, 34, 6, 97, 6, 58, 6, 69, 84).buffer, {
   decodeString: false,
 });
-// => ArrayBuffer { 04 08 ... }
+// => ArrayBuffer { 97 }
 new TextDecoder().decode(buffer);
 // => "a"
 ```

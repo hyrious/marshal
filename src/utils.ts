@@ -1,6 +1,6 @@
 import isPlainObject from "is-plain-obj";
 import { RE_IGNORECASE, RE_MULTILINE } from "./constants";
-import { RubyHash, RubyString } from "./ruby";
+import { RubyBaseObject, RubyHash, RubyString } from "./ruby";
 
 let decoder: TextDecoder | undefined;
 export function decode(buffer: ArrayBuffer) {
@@ -32,4 +32,8 @@ export function flags_to_uint8(f: string) {
 // is the input js object can be dumped to a ruby hash?
 export function is_hash(a: any): a is Record<string, any> | Map<any, any> | RubyHash {
   return a instanceof Map || a instanceof RubyHash || isPlainObject(a);
+}
+
+export function has_ivar(a: RubyBaseObject) {
+  return a.instanceVariables && a.instanceVariables.length > 0;
 }

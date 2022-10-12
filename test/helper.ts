@@ -3,6 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { suite, Test } from "uvu";
+import { load, dump } from "../src/index";
 
 export function describe(title: string, callback: (test: Test) => void) {
   const test = suite(title);
@@ -11,10 +12,11 @@ export function describe(title: string, callback: (test: Test) => void) {
 }
 
 /**
- * @example
- * rubyEval(`p 1`) => '1'
+ * ```js
+ * rb_eval(`p 1`) => '1'
+ * ```
  */
-export async function rubyEval(code: string) {
+export async function rb_eval(code: string) {
   const file = path.join(os.tmpdir(), `${Math.random().toString(36).slice(2)}.rb`);
   await fs.promises.writeFile(file, code);
   const output = await new Promise<string>((resolve, reject) =>
@@ -27,22 +29,36 @@ export async function rubyEval(code: string) {
 }
 
 /**
- * @example
- * rubyMarshalDump(`nil`) => ArrayBuffer { 4, 8, 0x30 }
+ * ```js
+ * rb_dump(`nil`) => ArrayBuffer { 4, 8, 0x30 }
+ * ```
  */
-export async function rubyMarshalDump(code: string) {
-  const stdout = await rubyEval(`s = Marshal.dump begin ${code} end; p s.unpack 'C*'`);
-  return Uint8Array.from(new Function(`return ${stdout}`)() as number[]).buffer;
+export async function rb_dump(code: string): Promise<ArrayBuffer> {
+  const hex = await rb_eval(`s = Marshal.dump begin ${code} end; print s.unpack1 'H*'`);
+  return new Uint8Array(Buffer.from(hex, "hex")).buffer;
+}
+
+export function loads(code: string) {
+  return rb_dump(code).then(load);
 }
 
 /**
- * @example
- * rubyMarshalLoad(marshal.dump(null)) => 'nil'
+ * ```js
+ * rb_load(marshal.dump(null)) => 'nil'
+ * ```
  */
-export async function rubyMarshalLoad(buffer: ArrayBuffer, preamble = "", suffix = "p a") {
+export async function rb_load(buffer: ArrayBuffer, preamble = "", inspect = "p a"): Promise<string> {
   const array = Array.from(new Uint8Array(buffer));
   let code = `a = Marshal.load [${array}].pack 'C*'`;
   if (preamble) code = preamble + "; " + code;
-  if (suffix) code += "; " + suffix;
-  return (await rubyEval(code)).trim();
+  if (inspect) code += "; " + inspect;
+  return (await rb_eval(code)).trim();
+}
+
+export function dumps(x: any, preamble?: string, inspect?: string) {
+  return rb_load(dump(x), preamble, inspect);
+}
+
+export function dump_a(x: any) {
+  return Array.from(new Uint8Array(dump(x)));
 }

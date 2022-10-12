@@ -1,6 +1,6 @@
-import isPlainObject from "is-plain-obj";
+import type { RubyBaseObject, RubyString } from "./ruby";
+
 import { RE_IGNORECASE, RE_MULTILINE } from "./constants";
-import { RubyBaseObject, RubyHash, RubyString } from "./ruby";
 
 let decoder: TextDecoder | undefined;
 export function decode(buffer: ArrayBuffer) {
@@ -9,11 +9,6 @@ export function decode(buffer: ArrayBuffer) {
 let encoder: TextEncoder | undefined;
 export function encode(string: string) {
   return (encoder ||= new TextEncoder()).encode(string);
-}
-
-// is the input js object can be dumped to a ruby string?
-export function is_string(a: any): a is ArrayBuffer | string | RubyString {
-  return typeof a === "string" || a instanceof ArrayBuffer || a instanceof RubyString;
 }
 
 export function string_to_buffer(a: ArrayBuffer | string | RubyString) {
@@ -27,11 +22,6 @@ export function flags_to_uint8(f: string) {
   if (f.includes("i")) i |= RE_IGNORECASE;
   if (f.includes("m")) i |= RE_MULTILINE;
   return i;
-}
-
-// is the input js object can be dumped to a ruby hash?
-export function is_hash(a: any): a is Record<string, any> | Map<any, any> | RubyHash {
-  return a instanceof Map || a instanceof RubyHash || isPlainObject(a);
 }
 
 export function has_ivar(a: RubyBaseObject) {

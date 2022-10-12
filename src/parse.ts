@@ -1,6 +1,6 @@
 import * as constants from "./constants";
 import * as ruby from "./ruby";
-import { decode, is_string } from "./utils";
+import { decode } from "./utils";
 
 export interface ParseOptions {
   /**
@@ -186,7 +186,7 @@ function read_any(p: Parser): any {
       const entries = read_entries(p);
       if (object instanceof ruby.RubyBaseObject) {
         object.instanceVariables = entries;
-      } else if (is_string(object)) {
+      } else if (ruby.RubyString.isString(object)) {
         // don't error on strings because they could have an ivar of { encoding: 'utf-8' }
       } else {
         console.warn("cannot populate instance variables to non-RubyObject: " + object);

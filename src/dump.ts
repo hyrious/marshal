@@ -1,6 +1,6 @@
 import * as constants from "./constants";
 import * as ruby from "./ruby";
-import { encode, flags_to_uint8, has_ivar, is_hash, is_string, string_to_buffer } from "./utils";
+import { encode, flags_to_uint8, has_ivar, string_to_buffer } from "./utils";
 
 /** This class holds the dump state (object ref, symbol ref) */
 export class Dumper {
@@ -250,12 +250,12 @@ function w_object(d: Dumper, obj: any) {
     w_byte(d, constants.T_REGEXP);
     w_string(d, obj.source);
     w_byte(d, flags_to_uint8(obj.flags));
-  } else if (is_string(obj)) {
+  } else if (ruby.RubyString.isString(obj)) {
     w_remember(d, obj);
     // not implemented instance variables and user wrapped string
     w_byte(d, constants.T_STRING);
     w_bytes(d, new Uint8Array(string_to_buffer(obj)));
-  } else if (is_hash(obj)) {
+  } else if (ruby.RubyHash.isHash(obj)) {
     w_remember(d, obj);
     // not implemented instance variables and user wrapped hash
     const hash = ruby.RubyHash.from(obj);

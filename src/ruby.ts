@@ -1,3 +1,4 @@
+import isPlainObject from "is-plain-obj";
 import { decode } from "./utils";
 
 export class RubyBaseObject {
@@ -18,6 +19,9 @@ export class RubyBaseObject {
 export class RubyString extends RubyBaseObject {
   constructor(public buffer: ArrayBuffer) {
     super();
+  }
+  static isString(a: any): a is ArrayBuffer | string | RubyString {
+    return typeof a === "string" || a instanceof ArrayBuffer || a instanceof RubyString;
   }
   toString() {
     return decode(this.buffer);
@@ -52,6 +56,9 @@ export class RubyStruct extends RubyBaseObject {
 export class RubyHash extends RubyBaseObject {
   constructor(public entries: [any, any][], public defaultValue?: any) {
     super();
+  }
+  static isHash(a: any): a is Record<string, any> | Map<any, any> | RubyHash {
+    return a instanceof Map || a instanceof RubyHash || isPlainObject(a);
   }
   static from(object: Record<string, any> | Map<any, any> | RubyHash) {
     if (object instanceof RubyHash) {

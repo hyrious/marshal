@@ -27,3 +27,14 @@ export function flags_to_uint8(f: string) {
 export function has_ivar(a: RubyBaseObject) {
   return a.instanceVariables && a.instanceVariables.length > 0;
 }
+
+export function hash_set(object: Record<string, any>, key: any, value: any) {
+  let str: string | undefined;
+  if (typeof key === "symbol" && (str = Symbol.keyFor(key))) {
+    object[str] = value;
+  } else if (typeof key === "string") {
+    object[key] = value;
+  } else {
+    throw new TypeError("RubyHash.toJS(): only support string or symbol keys");
+  }
+}

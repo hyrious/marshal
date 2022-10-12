@@ -1,5 +1,5 @@
 import isPlainObject from "is-plain-obj";
-import { decode } from "./utils";
+import { decode, hash_set } from "./utils";
 
 export class RubyBaseObject {
   /** `d`, for `_load_data`, created by ruby extensions */
@@ -78,14 +78,7 @@ export class RubyHash extends RubyBaseObject {
   toJS() {
     const object: Record<string, any> = {};
     for (const [key, value] of this.entries) {
-      let str: string | undefined;
-      if (typeof key === "symbol" && (str = Symbol.keyFor(key))) {
-        object[str] = value;
-      } else if (typeof key === "string") {
-        object[key] = value;
-      } else {
-        throw new TypeError("RubyHash.toJS(): only support string or symbol keys");
-      }
+      hash_set(object, key, value);
     }
     return object;
   }

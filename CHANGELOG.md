@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2
+
+- Fix `hashToJS`, `hashToMap` with nested hashes.
+
 ## 0.2.1
 
 - Fix dump Bignum logic.

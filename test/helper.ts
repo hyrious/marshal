@@ -3,7 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { suite, Test } from "uvu";
-import { load, dump } from "../src/index";
+import { load, dump, ParseOptions } from "../src/index";
 
 export function describe(title: string, callback: (test: Test) => void) {
   const test = suite(title);
@@ -38,8 +38,8 @@ export async function rb_dump(code: string): Promise<ArrayBuffer> {
   return new Uint8Array(Buffer.from(hex, "hex")).buffer;
 }
 
-export function loads(code: string) {
-  return rb_dump(code).then(load);
+export function loads(code: string, options?: ParseOptions) {
+  return rb_dump(code).then(e => load(e, options));
 }
 
 /**

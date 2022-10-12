@@ -1,6 +1,6 @@
 import * as constants from "./constants";
 import * as ruby from "./ruby";
-import { decode } from "./utils";
+import { decode, hash_set } from "./utils";
 
 export interface ParseOptions {
   /**
@@ -124,6 +124,11 @@ function read_entries(p: Parser) {
   return entries;
 }
 
+function read_entries_p(p: Parser, f: (key: any, value: any) => void) {
+  let n = read_fixnum(p);
+  while (n--) f(read_any(p), read_any(p));
+}
+
 function read_bignum(p: Parser) {
   const sign = p.view_.getUint8(p.pos_++);
   const n = read_fixnum(p) * 2;
@@ -243,16 +248,38 @@ function read_any(p: Parser): any {
       return _push_and_return_object(p, read_float(p));
 
     case constants.T_HASH: {
-      const hash = _push_and_return_object(p, new ruby.RubyHash([]));
-      hash.entries = read_entries(p);
-      return p.options_.hashToJS ? hash.toJS() : p.options_.hashToMap ? hash.toMap() : hash;
+      if (p.options_.hashToJS) {
+        const hash: Record<string, any> = _push_and_return_object(p, {});
+        read_entries_p(p, hash_set.bind(null, hash));
+        return hash;
+      } else if (p.options_.hashToMap) {
+        const hash: Map<any, any> = _push_and_return_object(p, new Map());
+        read_entries_p(p, hash.set.bind(hash));
+        return hash;
+      } else {
+        const hash = _push_and_return_object(p, new ruby.RubyHash([]));
+        hash.entries = read_entries(p);
+        return hash;
+      }
     }
 
     case constants.T_HASH_DEF: {
-      const hash = _push_and_return_object(p, new ruby.RubyHash([]));
-      hash.entries = read_entries(p);
-      hash.defaultValue = read_any(p);
-      return p.options_.hashToJS ? hash.toJS() : p.options_.hashToMap ? hash.toMap() : hash;
+      if (p.options_.hashToJS) {
+        const hash: Record<string, any> = _push_and_return_object(p, {});
+        read_entries_p(p, hash_set.bind(null, hash));
+        void read_any(p); // default value is dropped
+        return hash;
+      } else if (p.options_.hashToMap) {
+        const hash: Map<any, any> = _push_and_return_object(p, new Map());
+        read_entries_p(p, hash.set.bind(hash));
+        void read_any(p); // default value is dropped
+        return hash;
+      } else {
+        const hash = _push_and_return_object(p, new ruby.RubyHash([]));
+        hash.entries = read_entries(p);
+        hash.defaultValue = read_any(p);
+        return hash;
+      }
     }
 
     case constants.T_OBJECT: {

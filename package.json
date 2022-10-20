@@ -1,6 +1,6 @@
 {
   "name": "@hyrious/marshal",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "Ruby marshal for the browser and node.js",
   "repository": "hyrious/marshal",
   "main": "dist/index.js",

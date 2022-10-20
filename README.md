@@ -87,6 +87,13 @@ load(Uint8Array.of(4, 8, 123, 6, 58, 6, 97, 105, 6).buffer, {
 
 ### [FAQ](./docs/faq.md)
 
+### [ChangeLog](./CHANGELOG.md)
+
+### Develop
+
+- Run `npm t` to run tests.
+- Run `npm t clone` to only run `clone.ts`.
+
 ### Reference
 
 - [marshal.c](https://github.com/ruby/ruby/blob/master/marshal.c)

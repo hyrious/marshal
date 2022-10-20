@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4
+
+- Fix mutating default options.
+
 ## 0.2.3
 
 - Add `clone(x, opt)` as a shortcut to `load(dump(x), opt)`.

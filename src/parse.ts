@@ -48,7 +48,7 @@ export class Parser {
   constructor(view: DataView, options?: ParseOptions) {
     this.pos_ = 0;
     this.view_ = view;
-    this.options_ = Object.assign(default_options, options);
+    this.options_ = Object.assign({}, default_options, options);
   }
 
   hasNext() {

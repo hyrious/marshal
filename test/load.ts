@@ -2,7 +2,7 @@ import * as assert from "uvu/assert";
 import * as marshal from "../src";
 import { describe, loads } from "./helper";
 
-describe("parse", test => {
+describe("load", test => {
   test("trivial value", async () => {
     assert.is(await loads(`nil`), null);
     assert.is(await loads(`true`), true);

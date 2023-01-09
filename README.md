@@ -16,7 +16,7 @@ dump(null); // ArrayBuffer { 04 08 30 }
 load(Uint8Array.of(4, 8, 0x30).buffer); // null
 
 // in Node.js
-load(fs.readFileSync("data").buffer);
+load(new Uint8Array(fs.readFileSync("data")).buffer);
 
 // in Browser
 load(await file.arrayBuffer());

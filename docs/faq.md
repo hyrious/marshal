@@ -2,7 +2,7 @@
 
 **How to pass a `Buffer` in Node.js ?**
 
-`buffer.buffer`.
+`new Uint8Array(buffer).buffer`.
 
 **How to get a binary string from ArrayBuffer (and reverse back) ?**
 

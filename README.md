@@ -1,5 +1,9 @@
 # @hyrious/marshal
 
+[!["load" size](https://hyrious.vercel.app/api/bundlejs?q=@hyrious/marshal&exports=load&label=load "load")](https://bundlejs.com/?q=@hyrious/marshal&treeshake=[{load}])
+[!["dump" size](https://hyrious.vercel.app/api/bundlejs?q=@hyrious/marshal&exports=dump&label=dump "dump")](https://bundlejs.com/?q=@hyrious/marshal&treeshake=[{dump}])
+[![total size](https://hyrious.vercel.app/api/bundlejs?q=@hyrious/marshal&label=total "*")](https://bundlejs.com/?q=@hyrious/marshal)
+
 Ruby marshal for the browser and Node.js.
 
 ## Install

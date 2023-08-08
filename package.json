@@ -20,7 +20,7 @@
   },
   "types": "dist/index.d.ts",
   "scripts": {
-    "build": "tsup",
+    "build": "esbuild-dev scripts/build.ts",
     "test": "esbuild-dev test/index.ts"
   },
   "engines": {
@@ -34,13 +34,13 @@
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",
   "devDependencies": {
-    "@hyrious/esbuild-dev": "^0.10.2",
+    "@hyrious/dts": "^0.1.9",
+    "@hyrious/esbuild-dev": "^0.10.4",
     "@types/node": "^18.x",
-    "esbuild": "^0.17.17",
+    "esbuild": "^0.18.20",
     "is-plain-obj": "^4.1.0",
-    "sucrase": "^3.32.0",
-    "tsup": "^6.7.0",
-    "typescript": "^5.0.4",
+    "rollup": "^3.27.2",
+    "typescript": "^5.1.6",
     "uvu": "^0.5.6"
   }
 }

@@ -24,7 +24,7 @@ Parse a Ruby marshal data to a JavaScript value.
 
   - `hashToJS` {Boolean} Whether to convert the Ruby hash to a JavaScript object.
     Because Ruby hash is ordered and its keys can be any type, the parser returns a `RubyHash` wrapper by default.
-    If `true`, be care that the Ruby hash keys must be a string or a symbol. Otherwise a `TypeError` will be thrown.
+    If `true`, be care that the Ruby hash keys must be a string or a symbol or a number. Otherwise a `TypeError` will be thrown.
     Default: `false`.
 
   - `hashToMap` {Boolean} Similar to `hashToJS`, this options will convert the Ruby hash to a JavaScript Map object.

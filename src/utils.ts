@@ -32,7 +32,7 @@ export function hash_set(object: Record<string, any>, key: any, value: any) {
   let str: string | undefined;
   if (typeof key === "symbol" && (str = Symbol.keyFor(key))) {
     object[str] = value;
-  } else if (typeof key === "string") {
+  } else if (typeof key === "string" || typeof key === "number") {
     object[key] = value;
   } else {
     throw new TypeError("RubyHash.toJS(): only support string or symbol keys");

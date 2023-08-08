@@ -103,6 +103,7 @@ load(Uint8Array.of(4, 8, 123, 6, 58, 6, 97, 105, 6).buffer, {
 - [marshal.c](https://github.com/ruby/ruby/blob/master/marshal.c)
 - [Marshal Format](https://github.com/ruby/ruby/blob/master/doc/marshal.rdoc) (official doc)
 - [node-marshal](https://github.com/clayzermk1/node-marshal)
+- [marshal-js](https://github.com/qnighy/marshal-js)
 - A [little](http://jakegoulding.com/blog/2013/01/15/a-little-dip-into-rubys-marshal-format)/[another](http://jakegoulding.com/blog/2013/01/16/another-dip-into-rubys-marshal-format)/[final](http://jakegoulding.com/blog/2013/01/20/a-final-dip-into-rubys-marshal-format) dip into Ruby's Marshal format
 
 ## License

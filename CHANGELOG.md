@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- `hashToJS` now also accepts number (Integer, Float) keys.
+
 ## 0.2.4
 
 - Fix mutating default options.

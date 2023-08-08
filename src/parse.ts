@@ -17,14 +17,13 @@ export interface ParseOptions {
 
   /**
    * If `true`, return a plain js object instead of `RubyHash`.
-   * Note that the keys of the hash must be symbol or string.
+   * Note that the keys of the hash must be symbol or string or number.
    * Default: false
    */
   hashToJS?: boolean;
 
   /**
    * If `true`, return a js map instead of `RubyHash`.
-   * Note that the keys of the hash must be symbol or string.
    * Default: false
    */
   hashToMap?: boolean;

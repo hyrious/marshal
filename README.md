@@ -1,8 +1,8 @@
 # @hyrious/marshal
 
-[!["load" size](https://hyrious.vercel.app/api/bundlejs?q=@hyrious/marshal&exports=load&label=load "load")](https://bundlejs.com/?q=@hyrious/marshal&treeshake=[{load}])
-[!["dump" size](https://hyrious.vercel.app/api/bundlejs?q=@hyrious/marshal&exports=dump&label=dump "dump")](https://bundlejs.com/?q=@hyrious/marshal&treeshake=[{dump}])
-[![total size](https://hyrious.vercel.app/api/bundlejs?q=@hyrious/marshal&label=total "*")](https://bundlejs.com/?q=@hyrious/marshal)
+![version](https://img.shields.io/npm/v/%40hyrious/marshal)
+![npm package size](https://img.shields.io/bundlephobia/min/%40hyrious/marshal)
+![downloads](https://img.shields.io/npm/dw/%40hyrious/marshal)
 
 Ruby marshal for the browser and Node.js.
 

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      main {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <textarea rows="10" id="js" placeholder="null"></textarea>
+      <button id="dump">DUMP</button>
+      <textarea rows="10" id="rb" placeholder="04 08 30"></textarea>
+      <a id="rb2" target="_blank"></a>
+    </main>
+    <script src="https://cdn.jsdelivr.net/npm/pako@2.1.0/dist/pako.min.js"></script>
+    <script src="dist/index.iife.js"></script>
+    <script>
+      dump.onclick = function marshal_dump() {
+        try {
+          var value = Function("return " + js.value)();
+        } catch (err) {
+          rb.value = err;
+          return;
+        }
+        var buffer = marshal.dump(value);
+        var array = new Uint8Array(buffer);
+        var hex = "";
+        var cols = 16;
+        for (var i = 0; i < array.length; ++i) {
+          hex += array[i].toString(16).padStart(2, "0") + " ";
+          if ((i + 1) % cols == 0) {
+            hex += "\n";
+          }
+        }
+        rb.value = hex;
+        var code = `a = Marshal.load [${array}].pack 'C*'; p a`;
+        tio(code).then(function (e) {
+          rb2.href = rb2.textContent = e;
+        });
+      };
+      function byteStringToByteArray(byteString) {
+        var byteArray = new Uint8Array(byteString.length);
+        for (var index = 0; index < byteString.length; index++)
+          byteArray[index] = byteString.charCodeAt(index);
+        byteArray.head = 0;
+        return byteArray;
+      }
+      function byteArrayToByteString(byteArray) {
+        var retval = "";
+        for (var byte of byteArray) {
+          retval += String.fromCharCode(byte);
+        }
+        return retval;
+      }
+      function byteStringToBase64(byteString) {
+        return btoa(byteString).replace(/\+/g, "@").replace(/=+/, "");
+      }
+      async function tio(code) {
+        var stateString = `ruby\xff\xff${code}\xff\xff`;
+        var buf = pako.deflateRaw(byteStringToByteArray(stateString), { level: 9 });
+        return `https://tio.run/##${byteStringToBase64(byteArrayToByteString(buf))}`;
+      }
+    </script>
+  </body>
+</html>

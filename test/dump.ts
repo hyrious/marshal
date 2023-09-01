@@ -9,7 +9,7 @@ describe("dump", test => {
     assert.is(await dumps(false), "false");
     assert.is(await dumps(0), "0");
     assert.is(await dumps([]), "[]");
-    assert.is(await dumps(new marshal.RubyHash([])), "{}");
+    assert.is(await dumps({}), "{}");
   });
 
   test("number", async () => {
@@ -32,8 +32,8 @@ describe("dump", test => {
     hash.a = hash;
     assert.is(await dumps(hash), "{:a=>{...}}");
 
-    let obj = new marshal.RubyObject(Symbol.for("Object"));
-    obj.instanceVariables = [[Symbol.for("@a"), obj]];
+    let obj: marshal.RubyObject = { type: "object", class: Symbol.for("Object") };
+    (obj as marshal.RubyIVars).__ivars = [[Symbol.for("@a"), obj]];
     assert.match(await dumps(obj), /^(#<Object:0x[a-f0-9]+) @a=\1 ...>>$/);
   });
 
@@ -41,11 +41,12 @@ describe("dump", test => {
     const preamble = "class A end; module M end";
     const code = "p a.singleton_class.ancestors[0..1]";
 
-    let obj = new marshal.RubyObject(Symbol.for("A"), { extends: [Symbol.for("M")] });
-    obj.instanceVariables = [];
+    let obj: marshal.RubyObject = { type: "object", class: Symbol.for("A") };
+    (obj as marshal.RubyExtends).__extends = [Symbol.for("M")];
+    (obj as marshal.RubyIVars).__ivars = [];
     assert.match(await dumps(obj, preamble, code), /^\[#<Class:#<A:0x[a-f0-9]+>>, M]/);
 
-    obj.extends = [Symbol.for("M"), Symbol.for("A")];
+    (obj as marshal.RubyExtends).__extends = [Symbol.for("M"), Symbol.for("A")];
     assert.match(await dumps(obj, preamble, code), /^\[M, #<Class:#<A:0x[a-f0-9]+>>]/);
   });
 });

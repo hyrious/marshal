@@ -45,7 +45,7 @@ const rollup_esbuild_plugin = (minify = false): rollup.Plugin => ({
 let start = Date.now();
 let bundle = await rollup.rollup({
   input: "src/index.ts",
-  plugins: [rollup_esbuild_plugin()],
+  plugins: [rollup_esbuild_plugin(true)],
 });
 
 const esm = bundle.write({
@@ -62,19 +62,12 @@ const cjs = bundle.write({
   sourcemapExcludeSources: true,
 });
 
-const iife = rollup
-  .rollup({
-    input: "src/index.ts",
-    plugins: [rollup_esbuild_plugin(true)],
-  })
-  .then(bundle =>
-    bundle.write({
-      file: "dist/index.iife.js",
-      format: "iife",
-      name: name.split("/").pop(),
-      sourcemap: true,
-    })
-  );
+const iife = bundle.write({
+  file: "dist/index.iife.js",
+  format: "iife",
+  name: name.split("/").pop(),
+  sourcemap: true,
+});
 
 await esm;
 await cjs;

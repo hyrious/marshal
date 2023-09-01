@@ -28,7 +28,9 @@ export const T_USERDEF = "u".charCodeAt(0);
 export const T_USERMARSHAL = "U".charCodeAt(0);
 
 export const RE_IGNORECASE = 1;
+export const RE_EXTEND = 2;
 export const RE_MULTILINE = 4;
+// Note: there may be more flags, we should keep them
 
 export const B_POSITIVE = "+".charCodeAt(0);
 export const B_NEGATIVE = "-".charCodeAt(0);

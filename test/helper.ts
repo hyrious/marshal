@@ -3,7 +3,7 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { suite, Test } from "uvu";
-import { load, dump, ParseOptions } from "../src/index";
+import { load, dump, LoadOptions } from "../src/index";
 
 export function describe(title: string, callback: (test: Test) => void) {
   const test = suite(title);
@@ -30,15 +30,15 @@ export async function rb_eval(code: string) {
 
 /**
  * ```js
- * rb_dump(`nil`) => ArrayBuffer { 4, 8, 0x30 }
+ * rb_dump(`nil`) => Uint8Array { 4, 8, 0x30 }
  * ```
  */
-export async function rb_dump(code: string): Promise<ArrayBuffer> {
+export async function rb_dump(code: string): Promise<Uint8Array> {
   const hex = await rb_eval(`s = Marshal.dump begin ${code} end; print s.unpack1 'H*'`);
-  return new Uint8Array(Buffer.from(hex, "hex")).buffer;
+  return Buffer.from(hex, "hex");
 }
 
-export function loads(code: string, options?: ParseOptions) {
+export function loads(code: string, options?: LoadOptions) {
   return rb_dump(code).then(e => load(e, options));
 }
 
@@ -60,5 +60,5 @@ export function dumps(x: any, preamble?: string, inspect?: string) {
 }
 
 export function dump_a(x: any) {
-  return Array.from(new Uint8Array(dump(x)));
+  return Array.from(dump(x));
 }

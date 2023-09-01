@@ -51,17 +51,20 @@ export function encodeUTF8(string: string): Uint8Array {
 }
 
 export function extmod<T = any>(a: T, mods: (symbol | RubySymbol)[]): T & RubyExtends {
-  if (a !== null && typeof a === "object") {
-    if (!(a as RubyExtends).__extends)
+  if (a !== null && typeof a === "object" && mods.length > 0) {
+    if (!(a as RubyExtends).__extends) {
       Object.defineProperty(a, "__extends", { value: [], configurable: true });
+    }
     (a as RubyExtends).__extends!.push(...mods);
   }
   return a as T & RubyExtends;
 }
 
 export function ivars<T = any>(a: T, vars: [symbol | RubySymbol, any][]): T & RubyIVars {
-  if (a !== null && typeof a === "object") {
-    if (!(a as RubyIVars).__ivars) Object.defineProperty(a, "__ivars", { value: [], configurable: true });
+  if (a !== null && typeof a === "object" && vars.length > 0) {
+    if (!(a as RubyIVars).__ivars) {
+      Object.defineProperty(a, "__ivars", { value: [], configurable: true });
+    }
     (a as RubyIVars).__ivars!.push(...vars);
   }
   return a as T & RubyIVars;
@@ -106,7 +109,7 @@ export function hash_of(a: HashLike): RubyHash {
     for (const key of Object.keys(a)) {
       hash.entries.push([Symbol.for(key), (a as any)[key]]);
     }
-  if ((a as RubyHashDefault).__default) {
+  if ((a as RubyHashDefault).__default !== void 0) {
     hash.default = (a as RubyHashDefault).__default;
   }
 

@@ -3,22 +3,22 @@
   "version": "0.2.5",
   "description": "Ruby marshal for the browser and node.js",
   "repository": "hyrious/marshal",
-  "main": "dist/index.js",
-  "module": "dist/index.mjs",
-  "unpkg": "dist/index.iife.js",
-  "jsdelivr": "dist/index.iife.js",
+  "main": "dist/marshal.js",
+  "module": "dist/marshal.mjs",
+  "unpkg": "dist/marshal.iife.js",
+  "jsdelivr": "dist/marshal.iife.js",
   "files": [
     "src",
     "dist"
   ],
   "exports": {
     "node": {
-      "import": "./dist/index.mjs",
-      "require": "./dist/index.js"
+      "import": "./dist/marshal.mjs",
+      "require": "./dist/marshal.js"
     },
-    "default": "./dist/index.mjs"
+    "default": "./dist/marshal.mjs"
   },
-  "types": "dist/index.d.ts",
+  "types": "dist/marshal.d.ts",
   "scripts": {
     "build": "esbuild-dev scripts/build.ts",
     "test": "esbuild-dev test/index.ts"
@@ -39,6 +39,7 @@
     "@types/node": "^18.x",
     "esbuild": "^0.19.0",
     "is-plain-obj": "^4.1.0",
+    "pretty-bytes": "^6.1.1",
     "rollup": "^3.28.0",
     "typescript": "^5.1.6",
     "uvu": "^0.5.6"

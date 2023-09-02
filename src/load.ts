@@ -1,72 +1,66 @@
 import * as constants from "./constants";
-import * as ruby from "./ruby";
+import { decode, defProp, define_extends, define_hash_default, encode } from "./internal";
 import {
-  decodeUTF8,
-  decode_bignum,
-  extmod,
-  hash_default,
-  hash_set,
-  ivars,
-  option_to_str,
-  str_to_float,
-  symbol_to_str,
-} from "./utils";
+  Hash,
+  RubyClass,
+  RubyFloat,
+  RubyHash,
+  RubyInteger,
+  RubyModule,
+  RubyObject,
+  RubyStruct,
+} from "./ruby";
 
 export interface LoadOptions {
   /**
-   * If `true`, use the Ruby{Fixnum|Bignum|Float} wrapper instead of the primitive number.
-   * These wrappers make it possible to distinguish between integer 1 and float 1.
-   * Default: `false`
+   * If set, put integers and floats in RubyInteger and RubyFloat.
+   * No bigint support now.
+   * ```js
+   * load(data) // => 1
+   * load(data, { numeric: "wrap" }) // => RubyFloat { value: 1 }
+   * load(data, { numeric: "wrap" }) // => RubyInteger { value: 1 }
+   * ```
    */
-  wrapNumber?: boolean;
+  numeric?: "wrap";
 
   /**
-   * If `true`, instead of generating the RubyString wrapper, use the primitive string.
-   * Be careful that only `UTF8` is supported.
-   * Default: `false`
+   * If true, convert symbol keys to string when decoding ruby Hash in JS objects.
+   * ```js
+   * load(data) // => { Symbol(a): 1 }
+   * load(data, { hashSymbolKeysToString: true }) // => { a: 1 }
+   * ```
    */
-  decodeString?: boolean;
+  hashSymbolKeysToString?: boolean;
 
   /**
-   * If `true`, instead of generating the RubySymbol wrapper, use the primitive symbol.
-   * Be careful that only `UTF8` is supported.
-   * Default: `false`
+   * Instead of JS object, decode ruby Hash as Map or RubyHash.
+   * `hashSymbolKeysToString` is ignored when this option is set.
+   * ```js
+   * load(data) // => { a: 1 }
+   * load(data, { hash: "map" }) // => Map { "a" => 1 }
+   * load(data, { hash: "wrap" }) // => RubyHash { entries: [["a", 1]] }
+   * ```
    */
-  decodeSymbol?: boolean;
+  hash?: "map" | "wrap";
 
   /**
-   * If `true`, instead of generating the RubyRegexp wrapper, use the primitive RegExp.
-   * Be careful that only `UTF8` is supported, and only the `i` and `m` flags are kept.
-   * Default: `false`
+   * If set, put instance variables (often :@key) as string keys in JS objects.
+   * If set a string, replace the '@' with the string.
+   * ```js
+   * load(data) // => RubyObject { Symbol(@a): 1 }
+   * load(data, { ivarToString: true }) // => RubyObject { "@a": 1 }
+   * load(data, { ivarToString: "" }) // => RubyObject { "a": 1 }
+   * load(data, { ivarToString: "_" }) // => RubyObject { "_a": 1 }
+   * ```
    */
-  decodeRegexp?: boolean;
-
-  /**
-   * If `true`, use RubyArray wrapper instead of js array.
-   * Default: `false`
-   */
-  wrapArray?: boolean;
-
-  /**
-   * If `true`, use the RubyHash wrapper instead of js plain object.
-   * If `map`, use js map.
-   * Otherwise (`false` or `js`), use js plain object.
-   * Default: `false`
-   */
-  wrapHash?: boolean | "map" | "js";
-
-  /**
-   * If set, instead of generating the RubyObject wrapper, use the given class.
-   */
-  knownClasses?: Record<string, { readonly prototype: any }>;
+  ivarToString?: boolean | string;
 }
 
-/** This class holds loader state */
 class Loader {
   declare pos_: number;
   declare view_: DataView;
-  declare symbols_: (symbol | ruby.RubySymbol)[];
-  declare objects_: any[];
+  declare symbols_: symbol[];
+  declare objects_: unknown[];
   declare options_: LoadOptions;
 
   constructor(view: DataView, options: LoadOptions = {}) {
@@ -77,321 +71,244 @@ class Loader {
     this.options_ = options;
   }
 
-  hasNext_(): boolean {
-    return this.pos_ + 2 < this.view_.byteLength && this.view_.getInt16(this.pos_) === 0x408;
+  hasNext_() {
+    return this.pos_ < this.view_.byteLength;
   }
 
-  get_(): any {
+  get_() {
+    if (this.pos_ + 2 >= this.view_.byteLength) {
+      throw new TypeError("marshal data too short");
+    }
     if (this.view_.getInt16(this.pos_) !== 0x408) {
       throw new TypeError("incompatible marshal file format (can't be read)");
     }
     this.pos_ += 2;
-    try {
-      return read_any(this);
-    } finally {
-      this.symbols_ = [];
-      this.objects_ = [];
-    }
-  }
-
-  getInt8_(): number {
-    return this.view_.getInt8(this.pos_++);
-  }
-
-  getUint8_(): number {
-    return this.view_.getUint8(this.pos_++);
-  }
-
-  peakUint8_(): number {
-    return this.view_.getUint8(this.pos_);
+    var value = read_any(this);
+    this.symbols_.length = 0;
+    this.objects_.length = 0;
+    return value;
   }
 }
 
-function read_bytes(p: Loader, n: number): Uint8Array {
-  const ret = new Uint8Array(p.view_.buffer, p.view_.byteOffset + p.pos_, n);
-  p.pos_ += n;
-  return ret;
-}
+const read_byte = (p: Loader): number => {
+  if (p.pos_ >= p.view_.byteLength) {
+    throw new TypeError("marshal data too short");
+  }
+  return p.view_.getUint8(p.pos_++);
+};
 
-function read_fixnum(p: Loader, w: true): ruby.RubyFixnum;
-function read_fixnum(p: Loader, w: false): number;
-function read_fixnum(p: Loader, w?: boolean): number | ruby.RubyFixnum;
-function read_fixnum(p: Loader, wrap = p.options_.wrapNumber) {
-  var value: number;
-  const t = p.getInt8_();
+const read_bytes = (p: Loader, n: number) => {
+  if (p.pos_ + n > p.view_.byteLength) {
+    throw new TypeError("marshal data too short");
+  }
+  return new Uint8Array(p.view_.buffer, p.view_.byteOffset + (p.pos_ += n) - n, n);
+};
+
+const read_fixnum = (p: Loader): number => {
+  if (p.pos_ >= p.view_.byteLength) {
+    throw new TypeError("marshal data too short");
+  }
+  var t = p.view_.getInt8(p.pos_++);
   if (t === 0) {
-    value = 0;
+    return 0;
   } else if (-4 <= t && t <= 4) {
-    const n = Math.abs(t);
-    const shift = (4 - n) * 8;
-    const bytes = read_bytes(p, n);
-    let a = 0;
-    for (let i = n - 1; i >= 0; --i) {
-      a = (a << 8) | bytes[i];
-    }
-    value = t > 0 ? a : (a << shift) >> shift;
+    for (var n = Math.abs(t), s = (4 - n) * 8, b = read_bytes(p, n), a = 0, i = n - 1; i >= 0; --i)
+      a = (a << 8) | b[i];
+    return t > 0 ? a : (a << s) >> s;
   } else {
-    value = t > 0 ? t - 5 : t + 5;
+    return t > 0 ? t - 5 : t + 5;
   }
-  return wrap ? ruby.makeFixnum(value) : value;
-}
+};
 
-function read_chunk(p: Loader) {
-  return read_bytes(p, read_fixnum(p, false));
-}
+const read_chunk = (p: Loader): Uint8Array => read_bytes(p, read_fixnum(p));
 
-function read_string(p: Loader, d: true): string;
-function read_string(p: Loader, d: false): ruby.RubyString;
-function read_string(p: Loader, d?: boolean): string | ruby.RubyString;
-function read_string(p: Loader, decode = p.options_.decodeString) {
-  const contents = read_chunk(p);
-  if (decode) return decodeUTF8(contents);
-  return ruby.makeString(contents);
-}
+// note: do not use read_string() to really load the string, decode it on demand
+const read_string = (p: Loader): string => decode(read_chunk(p));
 
-function read_symbol(p: Loader, d: true): symbol;
-function read_symbol(p: Loader, d: false): ruby.RubySymbol;
-function read_symbol(p: Loader, d?: boolean): symbol | ruby.RubySymbol;
-function read_symbol(p: Loader, decode = p.options_.decodeSymbol) {
-  const contents = read_chunk(p);
-  if (decode) return Symbol.for(decodeUTF8(contents));
-  return ruby.makeSymbol(contents);
-}
-
-function read_class(p: Loader): ruby.RubyClass {
-  return ruby.makeClass(read_chunk(p));
-}
-
-function read_module(p: Loader): ruby.RubyModule {
-  return ruby.makeModule(read_chunk(p));
-}
-
-function read_class_or_module(p: Loader): ruby.RubyClassOrModule {
-  return ruby.makeClassOrModule(read_chunk(p));
-}
-
-function _push_and_return_object<T = any>(p: Loader, object: T): T {
-  p.objects_.push(object);
-  return object;
-}
-
-function _push_and_return_symbol(p: Loader, symbol: symbol | ruby.RubySymbol): symbol | ruby.RubySymbol {
-  p.symbols_.push(symbol);
-  return symbol;
-}
-
-function read_entries(p: Loader): [any, any][] {
-  const entries: [any, any][] = [];
-  let n = read_fixnum(p, false);
-  while (n--) entries.push([read_any(p), read_any(p)]);
-  return entries;
-}
-
-function read_entries_p(p: Loader, f: (key: any, value: any) => void): void {
-  let n = read_fixnum(p, false);
-  while (n--) f(read_any(p), read_any(p));
-}
-
-function read_hash(p: Loader, def: boolean, wrap = p.options_.wrapHash): ruby.HashLike {
-  let hash: any;
-  if (!wrap || wrap === "js") {
-    hash = _push_and_return_object(p, {});
-    read_entries_p(p, hash_set.bind(null, hash));
-    if (def) hash_default(hash, read_any(p));
-  } else if (wrap === "map") {
-    hash = _push_and_return_object(p, new Map());
-    read_entries_p(p, hash.set.bind(hash));
-    if (def) hash_default(hash, read_any(p));
-  } else {
-    hash = _push_and_return_object(p, ruby.makeHash());
-    hash.entries = read_entries(p);
-    if (def) hash.default = read_any(p);
-  }
-  return hash;
-}
-
-function read_bignum(p: Loader, w: true): ruby.RubyBignum;
-function read_bignum(p: Loader, w: false): number;
-function read_bignum(p: Loader, w?: boolean): number | ruby.RubyBignum;
-function read_bignum(p: Loader, wrap = p.options_.wrapNumber) {
-  const sign = p.getUint8_() === constants.B_POSITIVE ? 1 : -1;
-  const n = read_fixnum(p, false) * 2;
-  const bytes = read_bytes(p, n);
-  if (!wrap) return decode_bignum(sign, bytes);
-  return ruby.makeBignum(sign, bytes);
-}
-
-function read_float(p: Loader, w: true): ruby.RubyFloat;
-function read_float(p: Loader, w: false): number;
-function read_float(p: Loader, w?: boolean): number | ruby.RubyFloat;
-function read_float(p: Loader, wrap = p.options_.wrapNumber) {
-  const text = read_string(p, true);
-  if (!wrap) return str_to_float(text);
-  return ruby.makeFloat(text);
-}
-
-function read_regexp(p: Loader, d: true): RegExp;
-function read_regexp(p: Loader, d: false): ruby.RubyRegexp;
-function read_regexp(p: Loader, d?: boolean): RegExp | ruby.RubyRegexp;
-function read_regexp(p: Loader, decode = p.options_.decodeRegexp) {
-  const contents = read_chunk(p);
-  const options = p.getUint8_();
-  if (decode) return new RegExp(decodeUTF8(contents), option_to_str(options));
-  return ruby.makeRegexp(contents, options);
-}
-
-function read_array(p: Loader, w: true): ruby.RubyArray;
-function read_array(p: Loader, w: false): any[];
-function read_array(p: Loader, w?: boolean): any[] | ruby.RubyArray;
-function read_array(p: Loader, wrap = p.options_.wrapArray) {
-  const n = read_fixnum(p, false);
-  const array = new Array(n);
-  const obj = wrap ? ruby.makeArray(array) : array;
-  _push_and_return_object(p, obj);
-  for (let i = 0; i < n; ++i) array[i] = read_any(p);
+const push_object = <T = unknown>(p: Loader, obj: T): T => {
+  p.objects_.push(obj);
   return obj;
-}
+};
 
-function read_data(p: Loader): ruby.RubyData {
-  const obj = _push_and_return_object(p, ruby.makeData(read_any(p)));
-  obj.data = read_any(p);
-  return obj as ruby.RubyData;
-}
+const push_symbol = (p: Loader, sym: symbol) => {
+  p.symbols_.push(sym);
+  return sym;
+};
 
-function read_struct(p: Loader): ruby.RubyStruct {
-  const obj = _push_and_return_object(p, ruby.makeStruct(read_any(p)));
-  obj.members = read_entries(p);
-  return obj as ruby.RubyStruct;
-}
+const read_bignum = (p: Loader): number => {
+  for (var sign = read_byte(p), n = read_fixnum(p) << 1, b = read_bytes(p, n), a = 0, i = 0; i < n; ++i)
+    a += b[i] * 2 ** (i << 3);
+  return sign === constants.B_POSITIVE ? a : -a;
+};
 
-function read_wrapped(p: Loader): ruby.RubyWrapped {
-  const obj = _push_and_return_object(p, ruby.makeWrapped(read_any(p)));
-  obj.wrapped = read_any(p);
-  return obj as ruby.RubyWrapped;
-}
+const read_float = (p: Loader): number => {
+  var s = read_string(p);
+  return s === "inf" ? 1 / 0 : s === "-inf" ? -1 / 0 : s === "nan" ? NaN : Number(s);
+};
 
-function read_user_defined(p: Loader): ruby.RubyUserDefined {
-  const obj = _push_and_return_object(p, ruby.makeUserDefined(read_any(p)));
-  obj.contents = read_chunk(p);
-  return obj as ruby.RubyUserDefined;
-}
+const read_regexp = (p: Loader): RegExp => {
+  var s = read_string(p);
+  var t = read_byte(p);
+  var f = "";
+  if (t & constants.RE_IGNORECASE) f += "i";
+  if (t & constants.RE_MULTILINE) f += "m";
+  return new RegExp(s, f);
+};
 
-function read_user_marshal(p: Loader): ruby.RubyUserMarshal {
-  const obj = _push_and_return_object(p, ruby.makeUserMarshal(read_any(p)));
-  obj.value = read_any(p);
-  return obj as ruby.RubyUserMarshal;
-}
+const hash_set = (h: Hash, k: unknown, v: unknown, sym2str?: boolean): Hash => {
+  var t = typeof k;
+  if (t === "symbol" || t === "string" || t === "number") {
+    if (sym2str && t === "symbol") k = Symbol.keyFor(k as symbol);
+    h[k as string | number | symbol] = v;
+  } else if (k instanceof Uint8Array) {
+    h[decode(k)] = v;
+  } else if (k instanceof RubyInteger || k instanceof RubyFloat) {
+    h[k.value] = v;
+  }
+  return h;
+};
 
-function read_object(p: Loader): any | ruby.RubyObject {
-  const className = read_any(p);
-  const known = p.options_.knownClasses || {};
-  const class_ = known[symbol_to_str(className)];
-  const obj = class_ ? Object.create(class_.prototype) : ruby.makeObject(className);
-  return ivars(_push_and_return_object(p, obj), read_entries(p)) as ruby.RubyObject;
-}
+const ivar_set = (o: {}, k: unknown, v: unknown, ivar2str?: boolean | string) => {
+  if (ivar2str === void 0 || ivar2str === false) (o as any)[k as any] = v;
+  else {
+    var s = Symbol.keyFor(k as symbol)!;
+    if (ivar2str === true) (o as any)[s as any] = v;
+    else (o as any)[s.replace(/^@/, ivar2str)] = v;
+  }
+};
 
-function read_any(p: Loader): any {
-  const t = p.getUint8_();
+const read_any = (p: Loader): unknown => {
+  var t = read_byte(p);
+  var numeric = p.options_.numeric === "wrap";
+  var ivar2str = p.options_.ivarToString;
 
   switch (t) {
-    case constants.T_TRUE:
-      return true;
-
-    case constants.T_FALSE:
-      return false;
-
     case constants.T_NIL:
       return null;
-
+    case constants.T_TRUE:
+      return true;
+    case constants.T_FALSE:
+      return false;
     case constants.T_FIXNUM:
-      return read_fixnum(p);
+      var i = read_fixnum(p);
+      return numeric ? new RubyInteger(i) : i;
 
     case constants.T_SYMBOL:
-      return _push_and_return_symbol(p, read_symbol(p));
-
+      return push_symbol(p, Symbol.for(read_string(p)));
     case constants.T_SYMLINK:
-      return p.symbols_[read_fixnum(p, false)];
-
+      return p.symbols_[read_fixnum(p)];
     case constants.T_LINK:
-      return p.objects_[read_fixnum(p, false)];
+      return p.objects_[read_fixnum(p)];
 
     case constants.T_IVAR:
-      return ivars(_push_and_return_object(p, read_any(p)), read_entries(p));
+      for (var o = read_any(p), n = read_fixnum(p), i = 0, k, v; i < n; ++i) {
+        k = read_any(p);
+        v = read_any(p);
+        // if a string (read as uint8array) has ivar :E or :encoding, decode it
+        if (o instanceof Uint8Array && (k === constants.SYM_E || k === constants.SYM_encoding)) {
+          if (k === constants.SYM_E) o = decode(o);
+          else o = new TextDecoder(decode(v as Uint8Array)).decode(o);
+          p.objects_[p.objects_.length - 1] = o;
+        }
+        // otherwise try to put the ivar
+        else if (o != null) {
+          // primitives (boolean, number, string, symbol, ...) cannot hold properties,
+          // so code below silently fail. other objects get a [Symbol(@key)] property
+          ivar_set(o, k, v, ivar2str);
+        }
+      }
+      return o;
 
     // sequence ['e', :N, 'e', :M, 'o', :A, 0] produces #<A extends=[N, M]>
-    // sequence ['e', :M, 'e', :C, 'o', ';', 1(6), 0] produces #<C> whose singleton class prepends [M]
-    // The 'singleton class' case is determined by whether last(extends) is a RubyClass,
-    // because we do not decode a ruby class to js class, we cannot know this info,
-    // so we just return a RubyObject whose 'extends' is [:N, :M, :C],
-    // one can still construct the real object by testing the last symbol's kind.
-    case constants.T_EXTENDED: {
-      const mods: (symbol | ruby.RubySymbol)[] = [read_any(p)];
-      while (p.peakUint8_() === constants.T_EXTENDED) {
-        p.pos_++;
-        mods.push(read_any(p));
-      }
-      return extmod(_push_and_return_object(p, read_any(p)), mods);
-    }
+    // sequence ['e', :M, 'e', :C, 'o', :C, 0] produces #<C> whose singleton class prepends [M]
+    // the 'singleton class' case is determined by whether the last 'e' is a class
+    // here we just prepend the extends into obj.__ruby_extends__
+    case constants.T_EXTENDED:
+      var sym = read_any(p) as symbol;
+      var o = read_any(p);
+      var e = define_extends(o);
+      if (e) e.unshift(sym);
+      return o;
 
     case constants.T_ARRAY:
-      return read_array(p);
+      for (var n = read_fixnum(p), a = push_object(p, Array(n)) as unknown[], i = 0; i < n; ++i)
+        a[i] = read_any(p);
+      return a;
 
     case constants.T_BIGNUM:
-      return _push_and_return_object(p, read_bignum(p));
+      var i = read_bignum(p);
+      return push_object(p, numeric ? new RubyInteger(i) : i);
 
     case constants.T_CLASS:
-      return _push_and_return_object(p, read_class(p));
-
+      return push_object(p, new RubyClass(read_string(p)));
     case constants.T_MODULE:
-      return _push_and_return_object(p, read_module(p));
-
     case constants.T_MODULE_OLD:
-      return _push_and_return_object(p, read_class_or_module(p));
-
-    case constants.T_DATA:
-      return read_data(p);
+      return push_object(p, new RubyModule(read_string(p), t === constants.T_MODULE_OLD));
 
     case constants.T_FLOAT:
-      return _push_and_return_object(p, read_float(p));
+      var i = read_float(p);
+      return push_object(p, numeric ? new RubyFloat(i) : i);
 
     case constants.T_HASH:
     case constants.T_HASH_DEF:
-      return read_hash(p, t === constants.T_HASH_DEF);
+      var type = p.options_.hash;
+      var sym2str = p.options_.hashSymbolKeysToString;
+      if (type === "map") {
+        for (var n = read_fixnum(p), m: Map<unknown, unknown> = push_object(p, new Map()), i = 0; i < n; ++i)
+          m.set(read_any(p), read_any(p));
+        if (t === constants.T_HASH_DEF) define_hash_default(m, read_any(p));
+        return m;
+      } else if (type === "wrap") {
+        for (var n = read_fixnum(p), w = push_object(p, new RubyHash([])), i = 0; i < n; ++i)
+          w.entries.push([read_any(p), read_any(p)]);
+        if (t === constants.T_HASH_DEF) w.default = read_any(p);
+        return w;
+      } else {
+        for (var n = read_fixnum(p), h: Hash = push_object(p, {}), i = 0; i < n; ++i)
+          hash_set(h, read_any(p), read_any(p), sym2str);
+        if (t === constants.T_HASH_DEF) define_hash_default(h, read_any(p));
+        return h;
+      }
 
     case constants.T_OBJECT:
-      return read_object(p);
+      var obj = push_object(p, new RubyObject(read_any(p) as symbol));
+      for (var n = read_fixnum(p), i = 0, k, v; i < n; ++i) {
+        k = read_any(p);
+        v = read_any(p);
+        ivar_set(obj, k, v, ivar2str);
+      }
+      return obj;
 
     case constants.T_REGEXP:
-      return _push_and_return_object(p, read_regexp(p));
+      return push_object(p, read_regexp(p));
 
     case constants.T_STRING:
-      return _push_and_return_object(p, read_string(p));
+      return push_object(p, read_chunk(p));
 
     case constants.T_STRUCT:
-      return read_struct(p);
+      var s = push_object(p, new RubyStruct(read_any(p) as symbol));
+      for (var n = read_fixnum(p), h: Hash = {}, i = 0; i < n; ++i) hash_set(h, read_any(p), read_any(p));
+      defProp(s, "members", { value: h, configurable: true });
+      return s;
 
+    case constants.T_DATA:
     case constants.T_UCLASS:
-      return read_wrapped(p);
-
     case constants.T_USERDEF:
-      return read_user_defined(p);
-
     case constants.T_USERMARSHAL:
-      return read_user_marshal(p);
+      var obj = push_object(p, new RubyObject(read_any(p) as symbol));
+      if (t === constants.T_DATA) obj.data = read_any(p);
+      if (t === constants.T_UCLASS) obj.wrapped = read_any(p) as typeof obj.wrapped;
+      if (t === constants.T_USERDEF) obj.userDefined = read_chunk(p);
+      if (t === constants.T_USERMARSHAL) obj.userMarshal = read_any(p);
+      return obj;
   }
-}
+};
 
-function toDataView(value: Uint8Array | ArrayBuffer): DataView {
-  if (Object.prototype.toString.call(value) === "[object ArrayBuffer]") {
-    return new DataView(value as ArrayBuffer);
-  } else {
-    return new DataView(
-      (value as Uint8Array).buffer,
-      (value as Uint8Array).byteOffset,
-      (value as Uint8Array).byteLength
-    );
-  }
-}
+const toDataView = (data: string | Uint8Array | ArrayBuffer): DataView => {
+  if (typeof data === "string") data = encode(data);
+  if (data instanceof ArrayBuffer) return new DataView(data);
+  return new DataView(data.buffer, data.byteOffset, data.byteLength);
+};
 
 /**
  * Load one marshal section from buffer.
@@ -402,18 +319,14 @@ function toDataView(value: Uint8Array | ArrayBuffer): DataView {
  * load(await file.arrayBuffer())
  * ```
  */
-export function load(data: Uint8Array | ArrayBuffer, options?: LoadOptions): any {
+export function load(data: string | Uint8Array | ArrayBuffer, options?: LoadOptions): unknown {
   return new Loader(toDataView(data), options).get_();
 }
 
-/**
- * Load all marshal sections from buffer.
- */
-export function loadAll(data: Uint8Array | ArrayBuffer, options?: LoadOptions): any[] {
-  const parser = new Loader(toDataView(data), options);
-  const result = [];
-  while (parser.hasNext_()) {
-    result.push(parser.get_());
+export function loadAll(data: string | Uint8Array | ArrayBuffer, options?: LoadOptions): unknown[] {
+  var p = new Loader(toDataView(data), options);
+  for (var a = []; p.hasNext_(); ) {
+    a.push(p.get_());
   }
-  return result;
+  return a;
 }

@@ -1,20 +1,18 @@
-import { readdirSync } from "fs";
-import { join } from "path";
 import { Suite } from "uvu/parse";
+import { readdirSync } from "fs";
 import { build } from "esbuild";
+import { join } from "path";
 
-const ignores = ["index.ts", "helper.ts", "tsconfig.json"];
+const ignored = ["index.ts", "helper.ts"];
 const suites: Suite[] = [];
 const pattern = (() => {
   let p = process.argv[2];
   return p ? new RegExp(p, "i") : /\.ts$/;
 })();
 
-readdirSync(__dirname).forEach(str => {
-  if (ignores.includes(str)) return;
-  const name = str;
-  const file = join(__dirname, str);
-  if (pattern.test(name)) suites.push({ name, file });
+readdirSync(__dirname).forEach(name => {
+  if (ignored.includes(name)) return;
+  if (pattern.test(name)) suites.push({ name, file: join(__dirname, name) });
 });
 suites.sort((a, b) => a.name.localeCompare(b.name));
 

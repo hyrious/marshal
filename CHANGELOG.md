@@ -2,57 +2,9 @@
 
 ## Unreleased
 
-- **Breaking**
+### :warning: BREAKING CHANGES
 
-  - `dump()` now returns `Uint8Array` for better performance.
-  - `Dumper` and `Loader` (formerly `Parser`) are hidden from the public API,
-    because their properpties are mangled for smaller size.
-  - Ruby `String` will always be wrapped in `RubyString` because it's contents
-    can be binary data. There's no `wrapString` any more.
-
-    Similar to `Symbol`s, this library will use `RubySymbol` instead of the native Symbol in JS.
-
-    Similar to `Regexp`s, this library will use `RubyRegexp` instead of the native RegExp in JS.
-
-    You can enable `decodeString: true` to get the previous behavior.
-
-    ```js
-    var a = load(data); //=> RubyString { contents, text }
-    a.contents; //=> Uint8Array(1) [ 97 ]
-    a.text; //=> "a", this is a computed property
-    ```
-
-  - Ruby `Integer` and `Float` still becomes JS `number`, but accepts a new option
-    `wrapNumber: true` to wrap them in `RubyInteger` and `RubyFloat` respectively.
-
-    ```js
-    var a = load(data, { wrapNumber: true });
-    a.type; //=> 'fixnum' or 'bignum' or 'float'
-    a.isInteger; //=> boolean
-    a.value; //=> 123
-    ```
-
-- `load()` now accepts `Uint8Array`.
-- `dump()` now learns new options:
-
-  - `knownClasses: { [className]: class }` to automatically dump JS objects into Ruby objects.
-
-    Note that to generate instance variables, you have to set the `__ivars` property on the object.
-
-    ```js
-    class A {}
-    var data = dump(
-      Object.assign(new A(), {
-        __ivars: [[Symbol.for("@a"), 1]],
-      }),
-      { knownClasses: { A } }
-    );
-    Marshal.load(data); //=> #<A @a=1>
-    ```
-
-  - If the object class is not in `knownClasses`, they will become ruby Hash, same as before.
-
-- `Ruby*` classes now all have a `type` property to help reducing `instanceof` checks.
+// TODO
 
 ## 0.2.5
 

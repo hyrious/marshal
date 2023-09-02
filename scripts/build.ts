@@ -1,14 +1,14 @@
-import fs from "node:fs";
+import fs from "fs";
 import * as rollup from "rollup";
 import * as esbuild from "esbuild";
 import * as dts from "@hyrious/dts";
-import { name } from "../package.json";
-import mangleCache from "../mangle-cache.json";
-import constants from "./plugins/constants";
+import prettyBytes from "pretty-bytes";
+
+import constants from "./plugin-constants";
 
 fs.rmSync("dist", { recursive: true, force: true });
 
-const rollup_esbuild_plugin = (minify = false): rollup.Plugin => ({
+const rollup_esbuild_plugin: rollup.Plugin = {
   name: "esbuild",
   async load(id) {
     const { outputFiles } = await esbuild.build({
@@ -18,11 +18,10 @@ const rollup_esbuild_plugin = (minify = false): rollup.Plugin => ({
       outfile: id.replace(/\.ts$/, ".js"),
       write: false,
       target: ["node14.18", "node16"],
-      plugins: [constants()],
+      plugins: [constants],
       platform: "node",
-      minify,
+      minify: true,
       mangleProps: /[^_]_$/,
-      mangleCache,
       sourcemap: true,
     });
     let code!: string, map!: string;
@@ -33,48 +32,51 @@ const rollup_esbuild_plugin = (minify = false): rollup.Plugin => ({
     return { code, map };
   },
   async renderChunk(code, chunk, options) {
-    if (!minify) {
-      code = code.replace(/^var ((?:T|RE|B)_[_A-Z]+ = \d+;)/gm, "const $1");
-      return { code, map: null };
-    }
     const result = await esbuild.transform(code, { minify: true, sourcemap: true });
     return { code: result.code, map: result.map };
   },
-});
+};
 
 let start = Date.now();
 let bundle = await rollup.rollup({
   input: "src/index.ts",
-  plugins: [rollup_esbuild_plugin(true)],
+  plugins: [rollup_esbuild_plugin],
 });
 
-const esm = bundle.write({
-  file: "dist/index.mjs",
-  format: "es",
+let esm = bundle.write({
+  file: "dist/marshal.mjs",
+  format: "esm",
   sourcemap: true,
   sourcemapExcludeSources: true,
 });
 
-const cjs = bundle.write({
-  file: "dist/index.js",
+let cjs = bundle.write({
+  file: "dist/marshal.js",
   format: "cjs",
   sourcemap: true,
   sourcemapExcludeSources: true,
 });
 
-const iife = bundle.write({
-  file: "dist/index.iife.js",
+let iife = bundle.write({
+  file: "dist/marshal.iife.js",
   format: "iife",
-  name: name.split("/").pop(),
+  name: "marshal",
   sourcemap: true,
 });
 
-await esm;
-await cjs;
-await iife;
+let esm_ = await esm;
+let cjs_ = await cjs;
+let iife_ = await iife;
 await bundle.close();
-console.log("Built dist/index.{js,mjs,iife.js} in", Date.now() - start, "ms");
+console.log("Built dist/marshal.{js,mjs,iife.js} in", Date.now() - start, "ms");
+
+const print = (banner: string, o: rollup.RollupOutput) => {
+  console.log(`  ${banner}: ${prettyBytes(o.output[0].code.length)}`);
+};
+print(" esm", esm_);
+print(" cjs", cjs_);
+print("iife", iife_);
 
 start = Date.now();
-await dts.build("src/index.ts", "dist/index.d.ts");
-console.log("Built dist/index.d.ts in", Date.now() - start, "ms");
+await dts.build("src/index.ts", "dist/marshal.d.ts");
+console.log("Built dist/marshal.d.ts in", Date.now() - start, "ms");

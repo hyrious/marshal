@@ -1,6 +1,10 @@
 import * as assert from "uvu/assert";
 import * as marshal from "../src";
-import { describe, dumps } from "./helper";
+import { describe, rb_load } from "./helper";
+
+function dumps(value: unknown, pre?: string, post?: string): Promise<string> {
+  return rb_load(marshal.dump(value), pre, post);
+}
 
 describe("dump", test => {
   test("trivial value", async () => {
@@ -28,25 +32,24 @@ describe("dump", test => {
     arr.push(arr);
     assert.is(await dumps(arr), "[[...]]");
 
-    let hash: Record<string, any> = {};
-    hash.a = hash;
+    let hash: marshal.Hash = {};
+    hash[Symbol.for("a")] = hash;
     assert.is(await dumps(hash), "{:a=>{...}}");
 
-    let obj: marshal.RubyObject = { type: "object", class: Symbol.for("Object") };
-    (obj as marshal.RubyIVars).__ivars = [[Symbol.for("@a"), obj]];
+    let obj = new marshal.RubyObject(Symbol.for("Object"));
+    obj[Symbol.for("@a")] = obj;
     assert.match(await dumps(obj), /^(#<Object:0x[a-f0-9]+) @a=\1 ...>>$/);
   });
 
   test("extended", async () => {
     const preamble = "class A end; module M end";
-    const code = "p a.singleton_class.ancestors[0..1]";
+    const code = "print a.singleton_class.ancestors[0..1].inspect";
 
-    let obj: marshal.RubyObject = { type: "object", class: Symbol.for("A") };
-    (obj as marshal.RubyExtends).__extends = [Symbol.for("M")];
-    (obj as marshal.RubyIVars).__ivars = [];
+    let obj = new marshal.RubyObject(Symbol.for("A"));
+    obj[marshal.S_EXTENDS] = [Symbol.for("M")];
     assert.match(await dumps(obj, preamble, code), /^\[#<Class:#<A:0x[a-f0-9]+>>, M]/);
 
-    (obj as marshal.RubyExtends).__extends = [Symbol.for("M"), Symbol.for("A")];
+    obj[marshal.S_EXTENDS] = [Symbol.for("M"), Symbol.for("A")];
     assert.match(await dumps(obj, preamble, code), /^\[M, #<Class:#<A:0x[a-f0-9]+>>]/);
   });
 });

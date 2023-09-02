@@ -1,6 +1,3 @@
-// This file will be modified to return number literals.
-// See ../scripts/plugins/constants.ts
-
 export const T_TRUE = "T".charCodeAt(0);
 export const T_FALSE = "F".charCodeAt(0);
 export const T_NIL = "0".charCodeAt(0);
@@ -28,9 +25,13 @@ export const T_USERDEF = "u".charCodeAt(0);
 export const T_USERMARSHAL = "U".charCodeAt(0);
 
 export const RE_IGNORECASE = 1;
-export const RE_EXTEND = 2;
+export const RE_EXTENDED = 2;
 export const RE_MULTILINE = 4;
-// Note: there may be more flags, we should keep them
 
 export const B_POSITIVE = "+".charCodeAt(0);
 export const B_NEGATIVE = "-".charCodeAt(0);
+
+export const SYM_E = /* @__PURE__ */ Symbol.for("E");
+export const SYM_encoding = /* @__PURE__ */ Symbol.for("encoding");
+export const S_EXTENDS = "__ruby_extends__";
+export const S_DEFAULT = "__ruby_default__";

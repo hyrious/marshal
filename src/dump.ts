@@ -1,20 +1,16 @@
+import isPlainObject from "is-plain-obj";
+
 import * as constants from "./constants";
-import * as ruby from "./ruby";
-import { encodeUTF8, has_ivar, hash_of, str_to_option } from "./utils";
+import { encode, strKeys, symKeys } from "./internal";
+import { RubyClass, RubyFloat, RubyHash, RubyInteger, RubyModule, RubyObject, RubyStruct } from "./ruby";
 
-export interface DumpOptions {
-  /**
-   * If set, instead of using the RubyObject wrapper, you can also use the given classes.
-   */
-  knownClasses?: Record<string, { readonly prototype: any }>;
-}
+export interface DumpOptions {}
 
-/** This class holds the dump state (object ref, symbol ref) */
 class Dumper {
   declare data_: Uint8Array;
   declare length_: number;
   declare objects_: Map<any, number>;
-  declare symbols_: Map<symbol | ruby.RubySymbol, number>;
+  declare symbols_: Map<symbol, number>;
   declare options_: DumpOptions;
 
   constructor(options: DumpOptions = {}) {
@@ -25,57 +21,53 @@ class Dumper {
     this.options_ = options;
   }
 
-  get length() {
-    return this.length_;
-  }
-
-  get data() {
-    return this.data_.subarray(0, this.length_);
-  }
-
-  dump(value: any) {
+  dump_(value: unknown) {
     w_byte(this, 4);
     w_byte(this, 8);
     w_object(this, value);
     this.objects_.clear();
     this.symbols_.clear();
+    return this;
+  }
+
+  get_() {
+    return this.data_.subarray(0, this.length_);
   }
 }
 
-function resize(d: Dumper) {
-  const data = new Uint8Array(d.data_.byteLength << 1);
+const resize = (d: Dumper) => {
+  var data = new Uint8Array(d.data_.byteLength << 1);
   data.set(d.data_);
   d.data_ = data;
-}
+};
 
-function w_buffer(d: Dumper, arr: ArrayLike<number>) {
+const w_byte = (d: Dumper, b: number) => {
+  if (d.length_ >= d.data_.byteLength) resize(d);
+  d.data_[d.length_++] = b;
+};
+
+const w_buffer = (d: Dumper, arr: ArrayLike<number>) => {
   while (d.length_ + arr.length >= d.data_.byteLength) resize(d);
   d.data_.set(arr, d.length_);
   d.length_ += arr.length;
-}
+};
 
-function w_byte(d: Dumper, b: number) {
-  if (d.length_ >= d.data_.byteLength) resize(d);
-  d.data_[d.length_++] = b;
-}
-
-function w_bytes(d: Dumper, arr: ArrayLike<number>) {
+const w_bytes = (d: Dumper, arr: ArrayLike<number>) => {
   w_long(d, arr.length);
   w_buffer(d, arr);
-}
+};
 
-function w_string(d: Dumper, s: string) {
-  w_bytes(d, encodeUTF8(s));
-}
+const w_string = (d: Dumper, s: string) => {
+  w_bytes(d, encode(s));
+};
 
-function w_long(d: Dumper, n: number) {
-  const buf = new Uint8Array(5);
-  const i = ruby_marshal_write_long(n, buf);
+const w_long = (d: Dumper, n: number) => {
+  var buf = new Uint8Array(5);
+  var i = ruby_marshal_write_long(n, buf);
   w_buffer(d, buf.subarray(0, i));
-}
+};
 
-function ruby_marshal_write_long(x: number, buf: Uint8Array) {
-  let i = 1;
+const ruby_marshal_write_long = (x: number, buf: Uint8Array) => {
   if (x === 0) {
     buf[0] = 0;
     return 1;
@@ -85,10 +77,10 @@ function ruby_marshal_write_long(x: number, buf: Uint8Array) {
     return 1;
   }
   if (-124 < x && x < 0) {
-    buf[0] = (x - 5) & 0xff; // it wraps negative number to 0-255
+    buf[0] = (x - 5) & 0xff;
     return 1;
   }
-  for (i = 1; i < 5; ++i) {
+  for (var i = 1; i < 5; ++i) {
     buf[i] = x & 0xff;
     x >>= 8;
     if (x === 0) {
@@ -101,107 +93,88 @@ function ruby_marshal_write_long(x: number, buf: Uint8Array) {
     }
   }
   return i + 1;
-}
+};
 
-function w_float(d: Dumper, f: number | ruby.RubyFloat) {
-  if (typeof f !== "number") {
-    w_string(d, f.text);
-  } else if (Number.isNaN(f)) {
-    w_string(d, "nan");
-  } else if (!Number.isFinite(f)) {
-    w_string(d, f < 0 ? "-inf" : "inf");
-  } else if (f === 0) {
-    w_string(d, Object.is(f, -0) ? "-0" : "0");
-  } else {
-    w_string(d, f.toString());
-  }
-}
+// prettier-ignore
+const w_float = (d: Dumper, f: number) => {
+  w_string(
+    d,
+    f !== f
+      ? "nan"
+      : Number.isFinite(f)
+        ? (Object.is(f, -0) ? "-0" : f.toString())
+        : f < 0 ? "-inf" : "inf"
+  );
+};
 
-function w_symbol(d: Dumper, sym: symbol | ruby.RubySymbol) {
+const w_symbol = (d: Dumper, sym: symbol) => {
   if (d.symbols_.has(sym)) {
     w_byte(d, constants.T_SYMLINK);
     w_long(d, d.symbols_.get(sym)!);
   } else {
-    let name = typeof sym === "symbol" ? Symbol.keyFor(sym) : sym.contents;
-    if (name === void 0) throw new TypeError("can't dump Symbol()");
-    if (typeof name === "string") name = encodeUTF8(name);
     w_byte(d, constants.T_SYMBOL);
-    w_bytes(d, name);
+    w_bytes(d, encode(Symbol.keyFor(sym)!));
     d.symbols_.set(sym, d.symbols_.size);
   }
-}
+};
 
-function w_extended(d: Dumper, extends_: (symbol | ruby.RubySymbol)[]) {
-  for (const sym of extends_) {
+const w_extended = (d: Dumper, e: symbol[]) => {
+  for (var sym of e) {
     w_byte(d, constants.T_EXTENDED);
     w_symbol(d, sym);
   }
-}
+};
 
-function w_class(d: Dumper, type: number, a: { class: symbol | ruby.RubySymbol }) {
-  if ((a as ruby.RubyExtends).__extends) w_extended(d, (a as ruby.RubyExtends).__extends!);
+const w_class = (d: Dumper, type: number, a: RubyObject | RubyStruct) => {
+  if ((a as any)[constants.S_EXTENDS]) w_extended(d, (a as any)[constants.S_EXTENDS]);
   w_byte(d, type);
   w_symbol(d, a.class);
-}
+};
 
-function w_uclass(d: Dumper, a: ruby.RubyWrapped) {
-  if ((a as ruby.RubyExtends).__extends) w_extended(d, (a as ruby.RubyExtends).__extends!);
+const w_uclass = (d: Dumper, a: RubyObject) => {
+  if ((a as any)[constants.S_EXTENDS]) w_extended(d, (a as any)[constants.S_EXTENDS]);
   if (a.wrapped) {
     w_byte(d, constants.T_UCLASS);
     w_symbol(d, a.class);
   }
-}
+};
 
-function w_ivar(d: Dumper, a: {}) {
-  if ((a as ruby.RubyIVars).__ivars) {
-    w_long(d, (a as ruby.RubyIVars).__ivars!.length);
-    for (const [key, value] of (a as ruby.RubyIVars).__ivars!) {
-      w_symbol(d, key);
-      w_object(d, value);
+// also used for struct.members, both printing sym keys
+const w_ivar = (d: Dumper, a: {}) => {
+  // prettier-ignore
+  var keys = symKeys(a), n = keys.length, i, k;
+  if (n > 0) {
+    w_long(d, n);
+    for (i = 0; i < n; ++i) {
+      w_symbol(d, (k = keys[i]));
+      w_object(d, (a as any)[k]);
     }
   } else {
     w_long(d, 0);
   }
-}
+};
 
-function w_bignum(d: Dumper, a: number | bigint | ruby.RubyBignum) {
+const w_bignum = (d: Dumper, a: number) => {
   w_byte(d, constants.T_BIGNUM);
-  if (typeof a === "number") {
-    w_byte(d, a < 0 ? constants.B_NEGATIVE : constants.B_POSITIVE);
-    const buffer: number[] = [];
-    a = Math.abs(a);
-    do {
-      buffer.push(a & 0xff);
-      a = Math.floor(a / 256);
-    } while (a);
-    if (buffer.length % 2) buffer.push(0);
-    w_long(d, buffer.length >> 1);
-    w_buffer(d, buffer);
-  } else if (typeof a === "bigint") {
-    w_byte(d, a < 0n ? constants.B_NEGATIVE : constants.B_POSITIVE);
-    const buffer: number[] = [];
-    a = a < 0n ? -a : a;
-    do {
-      buffer.push(Number(a & 0xffn));
-      a >>= 8n;
-    } while (a);
-    if (buffer.length % 2) buffer.push(0);
-    w_long(d, buffer.length >> 1);
-    w_buffer(d, buffer);
-  } else {
-    w_byte(d, a.sign < 0 ? constants.B_NEGATIVE : constants.B_POSITIVE);
-    w_long(d, a.bytes.byteLength >> 1);
-    w_buffer(d, a.bytes);
-  }
-}
+  w_byte(d, a < 0 ? constants.B_NEGATIVE : constants.B_POSITIVE);
+  var buffer: number[] = [];
+  a = Math.abs(a);
+  do {
+    buffer.push(a & 0xff);
+    a = Math.floor(a / 256);
+  } while (a);
+  if (buffer.length & 1) buffer.push(0);
+  w_long(d, buffer.length >> 1);
+  w_buffer(d, buffer);
+};
 
-function w_remember(d: Dumper, obj: any) {
+const w_remember = (d: Dumper, obj: unknown) => {
   if (!d.objects_.has(obj)) {
     d.objects_.set(obj, d.objects_.size);
   }
-}
+};
 
-function w_object(d: Dumper, obj: any) {
+const w_object = (d: Dumper, obj: unknown) => {
   if (obj === void 0) {
     throw new TypeError("can't dump undefined");
   } else if (obj === null) {
@@ -210,121 +183,144 @@ function w_object(d: Dumper, obj: any) {
     w_byte(d, constants.T_TRUE);
   } else if (obj === false) {
     w_byte(d, constants.T_FALSE);
-  } else if (ruby.isFixnumLike(obj)) {
-    w_byte(d, constants.T_FIXNUM);
-    w_long(d, typeof obj === "number" ? obj : obj.value);
-  } else if (ruby.isBignumLike(obj)) {
-    w_remember(d, obj);
-    w_bignum(d, obj);
-  } else if (ruby.isFloatLike(obj)) {
-    w_remember(d, obj);
+  } else if (typeof obj === "number") {
+    if (Number.isInteger(obj)) {
+      if (-0x40000000 <= obj && obj < 0x40000000) {
+        w_byte(d, constants.T_FIXNUM);
+        w_long(d, obj);
+      } else {
+        w_remember(d, obj);
+        w_bignum(d, obj);
+      }
+    } else {
+      w_remember(d, obj);
+      w_byte(d, constants.T_FLOAT);
+      w_float(d, obj);
+    }
+  } else if (obj instanceof RubyInteger) {
+    var i = obj.value;
+    if (-0x40000000 <= i && i < 0x40000000) {
+      w_byte(d, constants.T_FIXNUM);
+      w_long(d, i);
+    } else {
+      w_remember(d, i);
+      w_bignum(d, i);
+    }
+  } else if (obj instanceof RubyFloat) {
+    var i = obj.value;
+    w_remember(d, i);
     w_byte(d, constants.T_FLOAT);
-    w_float(d, obj);
-  } else if (ruby.isSymbolLike(obj)) {
+    w_float(d, i);
+  } else if (typeof obj === "symbol") {
     w_symbol(d, obj);
   } else if (d.objects_.has(obj)) {
     w_byte(d, constants.T_LINK);
     w_long(d, d.objects_.get(obj)!);
-  } else if (ruby.isObjectLike(obj)) {
+  } else if (obj instanceof RubyObject) {
     w_remember(d, obj);
-    w_class(d, constants.T_OBJECT, obj);
-    w_ivar(d, obj);
-  } else if (ruby.isDataLike(obj)) {
-    w_remember(d, obj);
-    w_class(d, constants.T_DATA, obj);
-    w_object(d, obj.data);
-  } else if (ruby.isWrappedLike(obj)) {
-    w_remember(d, obj);
-    w_uclass(d, obj);
-    w_object(d, obj.wrapped);
-  } else if (ruby.isUserDefinedLike(obj)) {
-    w_remember(d, obj);
-    if (has_ivar(obj)) w_byte(d, constants.T_IVAR);
-    w_class(d, constants.T_USERDEF, obj);
-    w_bytes(d, obj.contents);
-    if (has_ivar(obj)) w_ivar(d, obj);
-  } else if (ruby.isUserMarshalLike(obj)) {
-    w_remember(d, obj);
-    w_class(d, constants.T_USERMARSHAL, obj);
-    w_object(d, obj.value);
-  } else if (ruby.isArrayLike(obj)) {
-    w_remember(d, obj);
-    const array = Array.isArray(obj) ? obj : obj.value;
-    w_byte(d, constants.T_ARRAY);
-    w_long(d, array.length);
-    for (const item of array) {
-      w_object(d, item);
+    if (obj.data !== void 0) {
+      w_class(d, constants.T_DATA, obj);
+      w_object(d, obj.data);
+    } else if (obj.wrapped !== void 0) {
+      w_uclass(d, obj);
+      w_object(d, obj.wrapped);
+    } else if (obj.userDefined) {
+      var has_ivar = symKeys(obj).length > 0;
+      if (has_ivar) w_byte(d, constants.T_IVAR);
+      w_class(d, constants.T_USERDEF, obj);
+      w_bytes(d, obj.userDefined);
+      if (has_ivar) w_ivar(d, obj);
+    } else if (obj.userMarshal !== void 0) {
+      w_class(d, constants.T_USERMARSHAL, obj);
+      w_object(d, obj.userMarshal);
+    } else {
+      w_class(d, constants.T_OBJECT, obj);
+      w_ivar(d, obj);
     }
-  } else if (ruby.isClassLike(obj)) {
+  } else if (obj instanceof RubyStruct) {
+    w_remember(d, obj);
+    w_class(d, constants.T_STRUCT, obj);
+    w_ivar(d, obj.members);
+  } else if (Array.isArray(obj)) {
+    w_remember(d, obj);
+    w_byte(d, constants.T_ARRAY);
+    w_long(d, obj.length);
+    for (var i = 0; i < obj.length; ++i) {
+      w_object(d, obj[i]);
+    }
+  } else if (obj instanceof RegExp) {
+    w_remember(d, obj);
+    w_byte(d, constants.T_REGEXP);
+    w_string(d, obj.source);
+    var options = 0;
+    if (obj.flags.includes("i")) options |= constants.RE_IGNORECASE;
+    if (obj.flags.includes("m")) options |= constants.RE_MULTILINE;
+    w_byte(d, options);
+  } else if (typeof obj === "string") {
+    w_remember(d, obj);
+    w_byte(d, constants.T_IVAR);
+    w_byte(d, constants.T_STRING);
+    w_string(d, obj);
+    w_long(d, 1);
+    w_symbol(d, constants.SYM_E);
+    w_byte(d, constants.T_TRUE);
+  } else if (obj instanceof Uint8Array) {
+    w_remember(d, obj);
+    w_byte(d, constants.T_STRING);
+    w_bytes(d, obj);
+  } else if (obj instanceof RubyClass) {
     w_remember(d, obj);
     w_byte(d, constants.T_CLASS);
     w_string(d, obj.name);
-  } else if (ruby.isModuleLike(obj)) {
+  } else if (obj instanceof RubyModule) {
     w_remember(d, obj);
-    w_byte(d, obj.type === "module" ? constants.T_MODULE : constants.T_MODULE_OLD);
+    w_byte(d, obj.old ? constants.T_MODULE_OLD : constants.T_MODULE);
     w_string(d, obj.name);
-  } else if (ruby.isStructLike(obj)) {
+  } else if (obj instanceof RubyHash) {
     w_remember(d, obj);
-    w_class(d, constants.T_STRUCT, obj);
-    w_long(d, obj.members.length);
-    for (const [key, value] of obj.members) {
-      w_symbol(d, key);
-      w_object(d, value);
+    var def = obj.default;
+    w_byte(d, def === void 0 ? constants.T_HASH : constants.T_HASH_DEF);
+    w_long(d, obj.entries.length);
+    for (var i = 0, n = obj.entries.length, k, v; i < n; ++i) {
+      [k, v] = obj.entries[i];
+      w_object(d, k);
+      w_object(d, v);
     }
-  } else if (ruby.isRegexpLike(obj)) {
+    if (def !== void 0) w_object(d, def);
+  } else if (obj instanceof Map) {
     w_remember(d, obj);
-    w_byte(d, constants.T_REGEXP);
-    if (Object.prototype.toString.call(obj) === "[object RegExp]") {
-      w_string(d, obj.source);
-      w_byte(d, str_to_option(obj.flags));
-    } else {
-      w_buffer(d, (obj as ruby.RubyRegexp).contents);
-      w_byte(d, (obj as ruby.RubyRegexp).options);
+    var def = (obj as any)[constants.S_DEFAULT] as unknown;
+    w_byte(d, def === void 0 ? constants.T_HASH : constants.T_HASH_DEF);
+    w_long(d, obj.size);
+    for (var [k, v] of obj) {
+      w_object(d, k);
+      w_object(d, v);
     }
-  } else if (ruby.isStringLike(obj)) {
+    if (def !== void 0) w_object(d, def);
+  } else if (isPlainObject(obj)) {
     w_remember(d, obj);
-    w_byte(d, constants.T_STRING);
-    if (typeof obj === "string") {
-      w_bytes(d, encodeUTF8(obj));
-    } else {
-      w_bytes(d, obj.contents);
+    var def = obj[constants.S_DEFAULT];
+    w_byte(d, def === void 0 ? constants.T_HASH : constants.T_HASH_DEF);
+    var keys = (strKeys(obj) as (string | symbol)[]).concat(symKeys(obj));
+    w_long(d, keys.length);
+    for (var i = 0, n = keys.length, k; i < n; ++i) {
+      w_object(d, (k = keys[i]));
+      w_object(d, obj[k]);
     }
-  } else if (ruby.isHashLike(obj)) {
-    w_remember(d, obj);
-    const hash = hash_of(obj);
-    w_byte(d, hash.default === undefined ? constants.T_HASH : constants.T_HASH_DEF);
-    w_long(d, hash.entries.length);
-    for (const [key, value] of hash.entries) {
-      w_object(d, key);
-      w_object(d, value);
-    }
-    if (hash.default !== undefined) w_object(d, hash.default);
+    if (def !== void 0) w_object(d, def);
   } else {
-    const known = d.options_.knownClasses;
-    for (const name in known) {
-      if (Object.getPrototypeOf(obj) === known[name].prototype) {
-        w_remember(d, obj);
-        if ((obj as ruby.RubyExtends).__extends) w_extended(d, (obj as ruby.RubyExtends).__extends!);
-        w_byte(d, constants.T_OBJECT);
-        w_symbol(d, Symbol.for(name));
-        w_ivar(d, obj);
-        return;
-      }
-    }
-    throw new TypeError("can't dump " + obj);
+    throw new TypeError("can't dump " + typeof obj + " " + obj);
   }
+};
+
+export function dump(value: unknown, options?: DumpOptions): Uint8Array {
+  return new Dumper(options).dump_(value).get_();
 }
 
-export function dump(value: any, options?: DumpOptions): Uint8Array {
-  const dumper = new Dumper(options);
-  dumper.dump(value);
-  return dumper.data;
-}
-
-export function dumpAll(values: any[], options?: DumpOptions): Uint8Array {
-  const dumper = new Dumper(options);
-  for (const value of values) {
-    dumper.dump(value);
+export function dumpAll(value: unknown[], options?: DumpOptions): Uint8Array {
+  var d = new Dumper(options);
+  for (var i = 0; i < value.length; ++i) {
+    d.dump_(value[i]);
   }
-  return dumper.data;
+  return d.get_();
 }

@@ -3,26 +3,25 @@ import fs from "fs";
 import os from "os";
 import path from "path";
 import { suite, Test } from "uvu";
-import { load, dump, LoadOptions } from "../src/index";
 
-export function describe(title: string, callback: (test: Test) => void) {
-  const test = suite(title);
+export function describe<T = any>(title: string, callback: (test: Test<T>) => void) {
+  const test = suite<T>(title);
   callback(test);
   test.run();
 }
 
 /**
  * ```js
- * rb_eval(`p 1`) => '1'
+ * rb_eval("p 1") => "1\n"
  * ```
  */
-export async function rb_eval(code: string) {
+export async function rb_eval(code: string): Promise<string> {
   const file = path.join(os.tmpdir(), `${Math.random().toString(36).slice(2)}.rb`);
   await fs.promises.writeFile(file, code);
   const output = await new Promise<string>((resolve, reject) =>
-    cp.exec(`ruby ${JSON.stringify(file)}`, (err, stdout, stderr) => {
-      err ? reject(err) : stderr ? reject(new Error(stderr)) : resolve(stdout);
-    })
+    cp.exec(`ruby ${JSON.stringify(file)}`, (err, stdout, stderr) =>
+      err ? reject(err) : stderr ? reject(new Error(stderr)) : resolve(stdout)
+    )
   );
   await fs.promises.unlink(file);
   return output;
@@ -30,7 +29,7 @@ export async function rb_eval(code: string) {
 
 /**
  * ```js
- * rb_dump(`nil`) => Uint8Array { 4, 8, 0x30 }
+ * rb_dump("nil") => Uint8Array [4, 8, 48]
  * ```
  */
 export async function rb_dump(code: string): Promise<Uint8Array> {
@@ -38,27 +37,25 @@ export async function rb_dump(code: string): Promise<Uint8Array> {
   return Buffer.from(hex, "hex");
 }
 
-export function loads(code: string, options?: LoadOptions) {
-  return rb_dump(code).then(e => load(e, options));
+/**
+ * ```js
+ * rb_load(Uint8Array [4, 8, 48]) => "nil"
+ * ```
+ */
+export async function rb_load(data: Uint8Array, pre = "", post = "print a.inspect"): Promise<string> {
+  const hex = Buffer.from(data).toString("hex");
+  let code = `a = Marshal.load ['${hex}'].pack("H*")`;
+  if (pre) code = pre + "; " + code;
+  if (post) code += "; " + post;
+  return rb_eval(code);
 }
 
 /**
  * ```js
- * rb_load(marshal.dump(null)) => 'nil'
+ * rb_str`"\a"` => "\x07" (instead of "a")
  * ```
  */
-export async function rb_load(buffer: ArrayBuffer, preamble = "", inspect = "p a"): Promise<string> {
-  const array = Array.from(new Uint8Array(buffer));
-  let code = `a = Marshal.load [${array}].pack 'C*'`;
-  if (preamble) code = preamble + "; " + code;
-  if (inspect) code += "; " + inspect;
-  return (await rb_eval(code)).trim();
-}
-
-export function dumps(x: any, preamble?: string, inspect?: string) {
-  return rb_load(dump(x), preamble, inspect);
-}
-
-export function dump_a(x: any) {
-  return Array.from(dump(x));
+export async function rb_str({ raw }: TemplateStringsArray): Promise<string> {
+  const hex = await rb_eval(`print ${raw}.unpack1 'H*'`);
+  return Buffer.from(hex, "hex").toString();
 }

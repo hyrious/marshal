@@ -26,6 +26,10 @@ load(fs.readFileSync("data"));
 load(await file.arrayBuffer());
 ```
 
+### [API Reference](./docs/api.md)
+
+### [FAQ](./docs/faq.md)
+
 ### [ChangeLog](./CHANGELOG.md)
 
 ### Develop

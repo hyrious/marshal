@@ -1,10 +1,8 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
-### :warning: BREAKING CHANGES
-
-// TODO
+- :warning: BREAKING. Read the [API Reference](./docs/api.md) to learn the new API.
 
 ## 0.2.5
 

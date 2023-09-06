@@ -1,6 +1,5 @@
 import { S_DEFAULT, S_EXTENDS } from "./constants";
 
-export const strKeys = Object.keys;
 export const symKeys = Object.getOwnPropertySymbols;
 export const defProp = Object.defineProperty;
 

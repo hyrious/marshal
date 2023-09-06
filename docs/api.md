@@ -7,7 +7,11 @@
   - [options.hashSymbolKeysToString: `true`](#optionshashsymbolkeystostring-true)
   - [options.hash: `"map"` | `"wrap"`](#optionshash-map--wrap)
   - [options.ivarToString: `true` | `string`](#optionsivartostring-true--string)
+  - [options.known: `{ class }`](#optionsknown--class-)
 - [dump(value, options?)](#dumpvalue-options)
+  - [options.hashStringKeysToSymbol: `true`](#optionshashstringkeystosymbol-true)
+  - [options.known: `{ class }`](#optionsknown--class--1)
+  - [options.unknown: `(obj) => string`](#optionsunknown-obj--string)
 
 ## load(data, options?)
 
@@ -92,6 +96,21 @@ load(data, { ivarToString: "" }); // => RubyObject { "a": 1 }
 load(data, { ivarToString: "_" }); // => RubyObject { "_a": 1 }
 ```
 
+### options.known: `{ class }`
+
+Decode Ruby objects as same-class JavaScript objects.
+
+```rb
+class A end
+data = Marshal.dump(A.new)
+```
+
+```js
+class A {}
+load(data); // => RubyObject { class: Symbol(A) }
+load(data, { known: { A } }); // => A {}
+```
+
 ## dump(value, options?)
 
 Encode a JavaScript value into Ruby marshal data. Returns a `Uint8Array`.
@@ -100,3 +119,32 @@ You should always check the `byteOffset` and `byteLength` when accessing the buf
 
 - `value` {unknown} The JavaScript value.
 - `options` {Object} Encode options.
+
+### options.hashStringKeysToSymbol: `true`
+
+Convert string keys in hash to symbol.
+
+```js
+dump({ a: 1 }); // => ruby: { "a" => 1 }
+dump({ a: 1 }, { hashStringKeysToSymbol: true }); // => ruby: { :a => 1 }
+```
+
+### options.known: `{ class }`
+
+Encode JavaScript objects into same-name Ruby objects.
+
+```js
+class A {}
+dump(new A()); // Error: can't dump object [object Object]
+dump(new A(), { known: { A } }); // => ruby: #<A>
+```
+
+### options.unknown: `(obj) => string`
+
+This is an alter to the error case of `options.known`.
+It should returns a string indicating the Ruby class name to encode into.
+If you return `null` or empty string, it fallbacks to throw the error.
+
+```js
+dump(new A(), { unknown: a => a.constructor?.name }); // => ruby: #<A>
+```

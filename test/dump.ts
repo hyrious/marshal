@@ -2,8 +2,11 @@ import * as assert from "uvu/assert";
 import * as marshal from "../src";
 import { describe, rb_load } from "./helper";
 
-function dumps(value: unknown, pre?: string, post?: string): Promise<string> {
-  return rb_load(marshal.dump(value), pre, post);
+function dumps(
+  value: unknown,
+  opts: { pre?: string; post?: string } & marshal.DumpOptions = {}
+): Promise<string> {
+  return rb_load(marshal.dump(value, opts), opts.pre, opts.post);
 }
 
 describe("dump", test => {
@@ -42,14 +45,34 @@ describe("dump", test => {
   });
 
   test("extended", async () => {
-    const preamble = "class A end; module M end";
-    const code = "print a.singleton_class.ancestors[0..1].inspect";
+    const pre = "class A end; module M end";
+    const post = "print a.singleton_class.ancestors[0..1].inspect";
 
     let obj = new marshal.RubyObject(Symbol.for("A"));
     obj[marshal.S_EXTENDS] = [Symbol.for("M")];
-    assert.match(await dumps(obj, preamble, code), /^\[#<Class:#<A:0x[a-f0-9]+>>, M]/);
+    assert.match(await dumps(obj, { pre, post }), /^\[#<Class:#<A:0x[a-f0-9]+>>, M]/);
 
     obj[marshal.S_EXTENDS] = [Symbol.for("M"), Symbol.for("A")];
-    assert.match(await dumps(obj, preamble, code), /^\[M, #<Class:#<A:0x[a-f0-9]+>>]/);
+    assert.match(await dumps(obj, { pre, post }), /^\[M, #<Class:#<A:0x[a-f0-9]+>>]/);
+  });
+
+  test("hashStringKeysToSymbol", async () => {
+    let obj = { a: 1, b: 2 };
+    assert.is(await dumps(obj), '{"a"=>1, "b"=>2}');
+    assert.is(await dumps(obj, { hashStringKeysToSymbol: true }), "{:a=>1, :b=>2}");
+  });
+
+  test("known", async () => {
+    class A {}
+    try {
+      await dumps(new A());
+      assert.unreachable("should throw error");
+    } catch (e) {
+      assert.instance(e, TypeError);
+      assert.match(e.message, /can't dump/);
+    }
+    let pre = "class A end";
+    assert.match(await dumps(new A(), { pre, known: { A } }), /^#<A:0x[a-f0-9]+>$/);
+    assert.match(await dumps(new A(), { pre, unknown: a => a?.constructor?.name }), /^#<A:0x[a-f0-9]+>$/);
   });
 });

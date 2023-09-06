@@ -11,6 +11,11 @@ import {
   RubyStruct,
 } from "./ruby";
 
+export interface ClassLike {
+  readonly name: string;
+  readonly prototype: object | null;
+}
+
 export interface LoadOptions {
   /**
    * If set, put integers and floats in RubyInteger and RubyFloat.
@@ -46,6 +51,7 @@ export interface LoadOptions {
   /**
    * If set, put instance variables (often :@key) as string keys in JS objects.
    * If set a string, replace the '@' with the string.
+   * Be careful that these ivars won't get dump()ed back.
    * ```js
    * load(data) // => RubyObject { Symbol(@a): 1 }
    * load(data, { ivarToString: true }) // => RubyObject { "@a": 1 }
@@ -54,6 +60,16 @@ export interface LoadOptions {
    * ```
    */
   ivarToString?: boolean | string;
+
+  /**
+   * If set, use this known classes to decode ruby objects.
+   * ```js
+   * class A {}
+   * load(data) // => RubyObject { class: Symbol(A) }
+   * load(data, { known: { A } }) // => A {}
+   * ```
+   */
+  known?: { [klass: string]: ClassLike };
 }
 
 class Loader {
@@ -181,6 +197,7 @@ const read_any = (p: Loader): unknown => {
   var t = read_byte(p);
   var numeric = p.options_.numeric === "wrap";
   var ivar2str = p.options_.ivarToString;
+  var known = p.options_.known || {};
 
   switch (t) {
     case constants.T_NIL:
@@ -271,7 +288,9 @@ const read_any = (p: Loader): unknown => {
       }
 
     case constants.T_OBJECT:
-      var obj = push_object(p, new RubyObject(read_any(p) as symbol));
+      var klass = read_any(p) as symbol;
+      var cls = known[Symbol.keyFor(klass)!];
+      var obj: RubyObject = push_object(p, cls ? Object.create(cls.prototype) : new RubyObject(klass));
       for (var n = read_fixnum(p), i = 0, k, v; i < n; ++i) {
         k = read_any(p);
         v = read_any(p);

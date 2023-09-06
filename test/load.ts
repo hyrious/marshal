@@ -113,4 +113,10 @@ describe("load", test => {
     obj = await loads(`a = Object.new; a.instance_variable_set :@a, 1; a`, { ivarToString: "@@" });
     assert.is(obj["@@a"], 1);
   });
+
+  test("known", async () => {
+    class A {}
+    let obj = await loads(`class A end; A.new`, { known: { A } });
+    assert.instance(obj, A);
+  });
 });

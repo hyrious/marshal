@@ -85,6 +85,12 @@ This library decodes Hash as plain object by default, which means unusual keys
 like an object is ignored. However, it is still possible to keep these keys
 using `Map` or wrapper classes, see [options.hash](./docs/api.md#optionshash-map--wrap).
 
+#### Instance Variables
+
+This library decodes instance variables (often `@a = 1`) as object props.
+It is guaranteed that you can retrieve these properties using `Object.getOwnPropertySymbols()`.
+It is possible to convert these symbols to strings, see [options.ivarToString](./docs/api.md#optionsivartostring-true--string).
+
 ### [API Reference](./docs/api.md)
 
 ### [FAQ](./docs/faq.md)

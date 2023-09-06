@@ -1,10 +1,38 @@
 import isPlainObject from "is-plain-obj";
 
 import * as constants from "./constants";
-import { encode, strKeys, symKeys } from "./internal";
+import { encode, symKeys } from "./internal";
 import { RubyClass, RubyFloat, RubyHash, RubyInteger, RubyModule, RubyObject, RubyStruct } from "./ruby";
+import { ClassLike } from "./load";
 
-export interface DumpOptions {}
+export interface DumpOptions {
+  /**
+   * If true, convert string keys in JS objects to ruby symbols in Hash.
+   * ```js
+   * dump({ a: 1 }) // => ruby: { "a" => 1 }
+   * dump({ a: 1 }, { hashStringKeysToSymbol: true }) // => ruby: { :a => 1 }
+   * ```
+   */
+  hashStringKeysToSymbol?: boolean;
+
+  /**
+   * If set, use this known classes to encode ruby objects.
+   * ```js
+   * dump(new A()) // => Error "can't dump object [object Object]"
+   * dump(new A(), { known: { A } }) // => ruby: #<A>
+   * ```
+   */
+  known?: { [klass: string]: ClassLike };
+
+  /**
+   * If set, use this string for unknown classes to encode ruby objects.
+   * ```js
+   * dump(new A()) // => Error "can't dump object [object Object]"
+   * dump(new A(), { unknown: () => "A" }) // => ruby: #<A>
+   * ```
+   */
+  unknown?: (obj: unknown) => string | null | undefined;
+}
 
 class Dumper {
   declare data_: Uint8Array;
@@ -174,7 +202,19 @@ const w_remember = (d: Dumper, obj: unknown) => {
   }
 };
 
+const w_known = (d: Dumper, obj: {}, klass: string) => {
+  w_remember(d, obj);
+  if ((obj as any)[constants.S_EXTENDS]) w_extended(d, (obj as any)[constants.S_EXTENDS]);
+  w_byte(d, constants.T_OBJECT);
+  w_symbol(d, Symbol.for(klass));
+  w_ivar(d, obj);
+};
+
 const w_object = (d: Dumper, obj: unknown) => {
+  var str2sym = d.options_.hashStringKeysToSymbol;
+  var known = d.options_.known || {};
+  var unknown = d.options_.unknown;
+
   if (obj === void 0) {
     throw new TypeError("can't dump undefined");
   } else if (obj === null) {
@@ -301,14 +341,29 @@ const w_object = (d: Dumper, obj: unknown) => {
     w_remember(d, obj);
     var def = obj[constants.S_DEFAULT];
     w_byte(d, def === void 0 ? constants.T_HASH : constants.T_HASH_DEF);
-    var keys = (strKeys(obj) as (string | symbol)[]).concat(symKeys(obj));
+    var keys = (Object.keys(obj) as (string | symbol)[]).concat(symKeys(obj));
     w_long(d, keys.length);
     for (var i = 0, n = keys.length, k; i < n; ++i) {
-      w_object(d, (k = keys[i]));
+      k = keys[i];
+      w_object(d, str2sym && typeof k === "string" ? Symbol.for(k) : k);
       w_object(d, obj[k]);
     }
     if (def !== void 0) w_object(d, def);
   } else {
+    var proto = Object.getPrototypeOf(obj);
+    for (var klass in known) {
+      if (proto === known[klass].prototype) {
+        w_known(d, obj, klass);
+        return;
+      }
+    }
+    if (unknown) {
+      var s = unknown(obj);
+      if (s) {
+        w_known(d, obj, s);
+        return;
+      }
+    }
     throw new TypeError("can't dump " + typeof obj + " " + obj);
   }
 };

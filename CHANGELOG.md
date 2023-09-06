@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.1
+
+- Fix `load(string)` should decode string in each code manually.
+
 ## 0.3.0
 
 - :warning: BREAKING. Read the [API Reference](./docs/api.md) to learn the new API.

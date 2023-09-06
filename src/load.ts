@@ -323,8 +323,15 @@ const read_any = (p: Loader): unknown => {
   }
 };
 
+const toBinary = (s: string): Uint8Array => {
+  for (var a = new Uint8Array(s.length), i = 0; i < s.length; ++i) {
+    a[i] = s.charCodeAt(i);
+  }
+  return a;
+};
+
 const toDataView = (data: string | Uint8Array | ArrayBuffer): DataView => {
-  if (typeof data === "string") data = encode(data);
+  if (typeof data === "string") data = toBinary(data);
   if (data instanceof ArrayBuffer) return new DataView(data);
   return new DataView(data.buffer, data.byteOffset, data.byteLength);
 };

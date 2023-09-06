@@ -17,7 +17,7 @@ npm add @hyrious/marshal
 ```ts
 import { dump, load } from "@hyrious/marshal";
 dump(null); // Uint8Array(3) [ 4, 8, 48 ]
-load(Uint8Array.of(4, 8, 48)); // null
+load("\x04\b0"); // null
 
 // in Node.js
 load(fs.readFileSync("data"));
@@ -25,6 +25,65 @@ load(fs.readFileSync("data"));
 // in Browser
 load(await file.arrayBuffer());
 ```
+
+### Ruby &harr; JavaScript
+
+| Ruby         | JavaScript                                  |
+| ------------ | ------------------------------------------- |
+| `nil`        | `null`                                      |
+| `"string"`   | `"string"` [^1]                             |
+| `:symbol`    | `Symbol("symbol")` [^2]                     |
+| `123456`     | `123456` (number)                           |
+| `123.456`    | `123.456` (number)                          |
+| `/cat/im`    | `/cat/im` (RegExp)                          |
+| `[]`         | `[]` [^3]                                   |
+| `{}`         | `{}` (plain object) [^4]                    |
+| `Object.new` | `RubyObject { class: Symbol(object) }` [^3] |
+
+[^1]: See the [String](#string) section.
+[^2]: Symbols are always decoded in UTF-8 even if they may have other encodings.
+[^3]: Instance variables are stored directly as props, i.e. `obj[Symbol(@a)] = 1`.
+[^4]: String/symbol/number keys are always decoded as JS object props.
+
+#### String
+
+Because users may store binary data that cannot be decoded as UTF-8 in Ruby,
+strings are decoded into `Uint8Array` firstly, then converted to `string`
+using `TextDecoder` if seeing an instance variable indicating the encoding.
+
+```js
+load('\x04\b"\0'); //=> Uint8Array []
+load('\x04\bI"\0\x06:\x06ET'); //=> ""
+```
+
+The special instance variables are:
+
+| name        | value        | encoding      |
+| ----------- | ------------ | ------------- |
+| `:E`        | true / false | UTF-8 / ASCII |
+| `:encoding` | "enc"        | enc           |
+
+So for strict compatibility, you should check if a string is Uint8Array before using it:
+
+```js
+var a = load(data);
+if (a instanceof Uint8Array) a = decode(a); // if you know it must be a string
+if (typeof a === "string") do_something(a);
+```
+
+#### Symbols
+
+You can use `Symbol.keyFor(sym)` in JavaScript to get the symbol name in string.
+
+#### RegExp
+
+Only `i` (ignore case) and `m` (multi-line) flags are preserved.
+
+#### Hash
+
+This library decodes Hash as plain object by default, which means unusual keys
+like an object is ignored. However, it is still possible to keep these keys
+using `Map` or wrapper classes, see [options.hash](./docs/api.md#optionshash-map--wrap).
 
 ### [API Reference](./docs/api.md)
 

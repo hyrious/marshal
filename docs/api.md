@@ -3,13 +3,37 @@
 ## Table of Contents
 
 - [load(data, options?)](#loaddata-options)
+  - [options.numeric: `"wrap"`](#optionsnumeric-wrap)
+  - [options.hashSymbolKeysToString: `true`](#optionshashsymbolkeystostring-true)
+  - [options.hash: `"map"` | `"wrap"`](#optionshash-map--wrap)
+  - [options.ivarToString: `true` | `string`](#optionsivartostring-true--string)
+- [dump(value, options?)](#dumpvalue-options)
 
 ## load(data, options?)
 
-Parse a Ruby marshal data to a JavaScript value.
+Parse a Ruby marshal data to a JavaScript value..
 
 - `data` {string | Uint8Array | ArrayBuffer} The marshal data.
 - `options` {Object} Parse options.
+
+When the `data` is a string, it is firstly encoded into `Uint8Array` using `TextEncoder`,
+this should give you a convenience to use this function like in Ruby:
+
+```js
+load("\x04\b0"); //=> null
+```
+
+Note that the string escaping is not exactly the same as Ruby:
+
+<samp>
+
+| hex code | Ruby | JavaScript |
+| -------- | ---- | ---------- |
+| 0x07     | \a   | \x07       |
+| 0x0B     | \v   | \x0B       |
+| 0x1B     | \e   | \x1B       |
+
+</samp>
 
 ### options.numeric: `"wrap"`
 
@@ -67,3 +91,12 @@ load(data, { ivarToString: true }); // => RubyObject { "@a": 1 }
 load(data, { ivarToString: "" }); // => RubyObject { "a": 1 }
 load(data, { ivarToString: "_" }); // => RubyObject { "_a": 1 }
 ```
+
+## dump(value, options?)
+
+Encode a JavaScript value into Ruby marshal data. Returns a `Uint8Array`.
+Note that the `Uint8Array` may not always be the same length as its underlying buffer.
+You should always check the `byteOffset` and `byteLength` when accessing the buffer.
+
+- `value` {unknown} The JavaScript value.
+- `options` {Object} Encode options.

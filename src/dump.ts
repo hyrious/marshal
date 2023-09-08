@@ -368,6 +368,12 @@ const w_object = (d: Dumper, obj: unknown) => {
   }
 };
 
+/**
+ * Dump a value into marshal buffer.
+ * ```js
+ * dump(null) // => Uint8Array [ 4, 8, 48 ]
+ * ```
+ */
 export function dump(value: unknown, options?: DumpOptions): Uint8Array {
   return new Dumper(options).dump_(value).get_();
 }

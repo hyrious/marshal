@@ -14,9 +14,11 @@
   "exports": {
     "node": {
       "import": "./dist/marshal.mjs",
-      "require": "./dist/marshal.js"
+      "require": "./dist/marshal.js",
+      "types": "./dist/marshal.d.ts"
     },
-    "default": "./dist/marshal.mjs"
+    "default": "./dist/marshal.mjs",
+    "types": "./dist/marshal.d.ts"
   },
   "types": "dist/marshal.d.ts",
   "scripts": {

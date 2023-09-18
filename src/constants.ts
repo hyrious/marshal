@@ -31,7 +31,7 @@ export const RE_MULTILINE = 4;
 export const B_POSITIVE = "+".charCodeAt(0);
 export const B_NEGATIVE = "-".charCodeAt(0);
 
-export const SYM_E = /* @__PURE__ */ Symbol.for("E");
-export const SYM_encoding = /* @__PURE__ */ Symbol.for("encoding");
+export const _E = /* @__PURE__ */ Symbol.for("E");
+export const _encoding = /* @__PURE__ */ Symbol.for("encoding");
 export const S_EXTENDS = "__ruby_extends__";
 export const S_DEFAULT = "__ruby_default__";

@@ -36,6 +36,11 @@ describe("load", test => {
     assert.is(data[0], 97);
     const gbk = await loads(`"中文".encode 'gbk'`);
     assert.is(gbk, "中文");
+    const binary_as_utf8 = await loads(`"a".force_encoding 'binary'`, { string: "utf8" });
+    assert.is(binary_as_utf8, "a");
+    const utf8_as_binary = await loads(`"a"`, { string: "binary" });
+    assert.instance(utf8_as_binary, Uint8Array);
+    assert.is(utf8_as_binary[0], 97);
   });
 
   test("symbol", async () => {

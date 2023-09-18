@@ -71,6 +71,8 @@ if (a instanceof Uint8Array) a = decode(a); // if you know it must be a string
 if (typeof a === "string") do_something(a);
 ```
 
+Or you can use `options.string` to control the behavior, see [options.string](./docs/api.md#optionsstring-utf8--binary).
+
 #### Symbols
 
 You can use `Symbol.keyFor(sym)` in JavaScript to get the symbol name in string.

@@ -302,7 +302,7 @@ const w_object = (d: Dumper, obj: unknown) => {
     w_byte(d, constants.T_STRING);
     w_string(d, obj);
     w_long(d, 1);
-    w_symbol(d, constants.SYM_E);
+    w_symbol(d, constants._E);
     w_byte(d, constants.T_TRUE);
   } else if (obj instanceof Uint8Array) {
     w_remember(d, obj);

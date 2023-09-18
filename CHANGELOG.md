@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.2
+
+- Add `string: utf8 | binary` in `load()` to force decode or not decode strings.
+
 ## 0.3.1
 
 - Fix `load(string)` should decode string in each code manually.

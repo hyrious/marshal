@@ -18,6 +18,16 @@ export interface ClassLike {
 
 export interface LoadOptions {
   /**
+   * If set, force the encoding of strings, otherwise strings will be decoded on demand.
+   * ```js
+   * load(data) // => ["foo", Uint8Array(3) [102, 111, 111]]
+   * load(data, { string: "utf8" }) // => ["foo", "foo"]
+   * load(data, { string: "binary" }) // => [Uint8Array(3) [102, 111, 111], Uint8Array(3) [102, 111, 111]]
+   * ```
+   */
+  string?: "binary" | "utf8";
+
+  /**
    * If set, put integers and floats in RubyInteger and RubyFloat.
    * No bigint support now.
    * ```js
@@ -195,6 +205,7 @@ const ivar_set = (o: {}, k: unknown, v: unknown, ivar2str?: boolean | string) =>
 
 const read_any = (p: Loader): unknown => {
   var t = read_byte(p);
+  var string = p.options_.string;
   var numeric = p.options_.numeric === "wrap";
   var ivar2str = p.options_.ivarToString;
   var known = p.options_.known || {};
@@ -222,8 +233,12 @@ const read_any = (p: Loader): unknown => {
         k = read_any(p);
         v = read_any(p);
         // if a string (read as uint8array) has ivar :E or :encoding, decode it
-        if (o instanceof Uint8Array && (k === constants.SYM_E || k === constants.SYM_encoding)) {
-          if (k === constants.SYM_E) o = decode(o);
+        if (
+          o instanceof Uint8Array &&
+          (k === constants._E || k === constants._encoding) &&
+          string !== "binary"
+        ) {
+          if (k === constants._E) o = decode(o);
           else o = new TextDecoder(decode(v as Uint8Array)).decode(o);
           p.objects_[p.objects_.length - 1] = o;
         }
@@ -302,7 +317,7 @@ const read_any = (p: Loader): unknown => {
       return push_object(p, read_regexp(p));
 
     case constants.T_STRING:
-      return push_object(p, read_chunk(p));
+      return push_object(p, string === "utf8" ? read_string(p) : read_chunk(p));
 
     case constants.T_STRUCT:
       var s = push_object(p, new RubyStruct(read_any(p) as symbol));

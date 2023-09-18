@@ -3,6 +3,7 @@
 ## Table of Contents
 
 - [load(data, options?)](#loaddata-options)
+  - [options.string: `"utf8"` | `"binary"`](#optionsstring-utf8--binary)
   - [options.numeric: `"wrap"`](#optionsnumeric-wrap)
   - [options.hashSymbolKeysToString: `true`](#optionshashsymbolkeystostring-true)
   - [options.hash: `"map"` | `"wrap"`](#optionshash-map--wrap)
@@ -38,6 +39,20 @@ Note that the string escaping is not exactly the same as Ruby:
 | 0x1B     | \e   | \x1B       |
 
 </samp>
+
+### options.string: `"utf8"` | `"binary"`
+
+Force decode or not decode string values.
+
+```rb
+data = Marshal.dump(["foo", "foo".force_encoding("binary")])
+```
+
+```js
+load(data); // => ["foo", Uint8Array(3) [ 102, 111, 111 ]]
+load(data, { string: "utf8" }); // => ["foo", "foo"]
+load(data, { string: "binary" }); // => [Uint8Array(3) [ 102, 111, 111 ], Uint8Array(3) [ 102, 111, 111 ]]
+```
 
 ### options.numeric: `"wrap"`
 

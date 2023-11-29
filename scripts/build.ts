@@ -4,8 +4,6 @@ import * as esbuild from "esbuild";
 import * as dts from "@hyrious/dts";
 import prettyBytes from "pretty-bytes";
 
-import constants from "./plugin-constants";
-
 fs.rmSync("dist", { recursive: true, force: true });
 
 const rollup_esbuild_plugin: rollup.Plugin = {
@@ -18,11 +16,11 @@ const rollup_esbuild_plugin: rollup.Plugin = {
       outfile: id.replace(/\.ts$/, ".js"),
       write: false,
       target: ["node14.18", "node16"],
-      plugins: [constants],
       platform: "node",
       minify: true,
       mangleProps: /[^_]_$/,
       sourcemap: true,
+      sourcesContent: false,
     });
     let code!: string, map!: string;
     for (const { path, text } of outputFiles) {

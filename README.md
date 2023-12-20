@@ -31,19 +31,18 @@ load(await file.arrayBuffer());
 | Ruby         | JavaScript                                  |
 | ------------ | ------------------------------------------- |
 | `nil`        | `null`                                      |
-| `"string"`   | `"string"` [^1]                             |
-| `:symbol`    | `Symbol("symbol")` [^2]                     |
+| `"string"`   | `"string"`                                  |
+| `:symbol`    | `Symbol("symbol")` [^1]                     |
 | `123456`     | `123456` (number)                           |
 | `123.456`    | `123.456` (number)                          |
 | `/cat/im`    | `/cat/im` (RegExp)                          |
-| `[]`         | `[]` [^3]                                   |
-| `{}`         | `{}` (plain object) [^4]                    |
-| `Object.new` | `RubyObject { class: Symbol(object) }` [^3] |
+| `[]`         | `[]` [^2]                                   |
+| `{}`         | `{}` (plain object) [^3]                    |
+| `Object.new` | `RubyObject { class: Symbol(object) }` [^2] |
 
-[^1]: See the [String](#string) section.
-[^2]: Symbols are always decoded in UTF-8 even if they may have other encodings.
-[^3]: Instance variables are stored directly as props, i.e. `obj[Symbol(@a)] = 1`.
-[^4]: String/symbol/number keys are always decoded as JS object props.
+[^1]: Symbols are always decoded in UTF-8 even if they may have other encodings.
+[^2]: Instance variables are stored directly as props, i.e. `obj[Symbol(@a)] = 1`.
+[^3]: String/symbol/number keys are always decoded as JS object props.
 
 #### String
 

@@ -2,7 +2,7 @@
   "editor.tabSize": 2,
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
-    "source.addMissingImports": true
+    "source.addMissingImports": "explicit"
   },
   "prettier.enable": true,
   "editor.defaultFormatter": "esbenp.prettier-vscode"

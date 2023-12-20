@@ -21,7 +21,7 @@ Parse a Ruby marshal data to a JavaScript value..
 - `data` {string | Uint8Array | ArrayBuffer} The marshal data.
 - `options` {Object} Parse options.
 
-When the `data` is a string, it is firstly encoded into `Uint8Array` using `TextEncoder`,
+When the `data` is a string, it is firstly encoded into `Uint8Array`,
 this should give you a convenience to use this function like in Ruby:
 
 ```js

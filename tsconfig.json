@@ -4,7 +4,7 @@
     "noEmit": true,
     "module": "ESNext",
     "target": "ESNext",
-    "lib": ["ESNext", "DOM"],
+    "types": ["node"],
     "esModuleInterop": true,
     "strict": true,
     "skipLibCheck": true,

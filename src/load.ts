@@ -1,5 +1,5 @@
 import * as constants from "./constants";
-import { decode, defProp, define_extends, define_hash_default, encode } from "./internal";
+import { decode, defProp, define_extends, define_hash_default } from "./internal";
 import {
   Hash,
   RubyClass,

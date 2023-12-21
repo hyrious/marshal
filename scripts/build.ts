@@ -77,4 +77,5 @@ print("iife", iife_);
 
 start = Date.now();
 await dts.build("src/index.ts", "dist/marshal.d.ts");
+fs.cpSync("dist/marshal.d.ts", "dist/marshal.d.mts");
 console.log("Built dist/marshal.d.ts in", Date.now() - start, "ms");

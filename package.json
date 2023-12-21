@@ -11,13 +11,11 @@
     "serialize"
   ],
   "exports": {
-    "types": "./dist/marshal.d.ts",
-    "default": "./dist/marshal.mjs",
     "node": {
-      "types": "./dist/marshal.d.ts",
       "import": "./dist/marshal.mjs",
       "require": "./dist/marshal.js"
-    }
+    },
+    "default": "./dist/marshal.mjs"
   },
   "main": "dist/marshal.js",
   "module": "dist/marshal.mjs",

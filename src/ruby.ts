@@ -34,7 +34,10 @@ export class RubyClass extends RubyBaseObject {
 }
 
 export class RubyModule extends RubyBaseObject {
-  constructor(public name: string, public old?: boolean) {
+  constructor(
+    public name: string,
+    public old?: boolean,
+  ) {
     super();
   }
 }
@@ -46,12 +49,9 @@ export class RubyHash {
     this.entries = entries || [];
     if (default_ !== undefined) this.default = default_;
   }
-  /** Returns a new object that is a ruby Hash with `compare_by_identity` enabled. */
-  compareByIdentity(): RubyObject {
-    var obj = new RubyObject(Symbol.for("Hash"));
-    obj.wrapped = this;
-    return obj;
-  }
+  // compareByIdentity() {
+  //   throw new Error("Not implemented");
+  // }
 }
 
 export class RubyRange extends RubyObject {

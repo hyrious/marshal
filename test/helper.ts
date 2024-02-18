@@ -4,10 +4,16 @@ import os from "os";
 import path from "path";
 import { suite, Test } from "uvu";
 
+const tests: Test<unknown>[] = [];
+
 export function describe<T = any>(title: string, callback: (test: Test<T>) => void) {
   const test = suite<T>(title);
   callback(test);
-  test.run();
+  tests.push(test);
+}
+
+export function runTests() {
+  tests.forEach(t => t.run());
 }
 
 /**
@@ -20,8 +26,8 @@ export async function rb_eval(code: string): Promise<string> {
   await fs.promises.writeFile(file, code);
   const output = await new Promise<string>((resolve, reject) =>
     cp.exec(`ruby ${JSON.stringify(file)}`, (err, stdout, stderr) =>
-      err ? reject(err) : stderr ? reject(new Error(stderr)) : resolve(stdout)
-    )
+      err ? reject(err) : stderr ? reject(new Error(stderr)) : resolve(stdout),
+    ),
   );
   await fs.promises.unlink(file);
   return output;

@@ -31,7 +31,7 @@
   },
   "scripts": {
     "build": "esbuild-dev scripts/build.ts",
-    "test": "c8 --include=src esbuild-dev --no-warnings --loader test/index.ts"
+    "test": "c8 --include=src --reporter=html esbuild-dev --no-warnings --loader test/index.ts"
   },
   "devDependencies": {
     "@hyrious/dts": "^0.2.1",

@@ -1,7 +1,8 @@
 import { Suite } from "uvu/parse";
 import { readdirSync } from "fs";
-import { build } from "esbuild";
-import { join } from "path";
+import { join, dirname } from "path";
+import { fileURLToPath } from "url";
+import { runTests } from "./helper";
 
 const ignored = ["index.ts", "helper.ts"];
 const suites: Suite[] = [];
@@ -10,23 +11,16 @@ const pattern = (() => {
   return p ? new RegExp(p, "i") : /\.ts$/;
 })();
 
-readdirSync(__dirname).forEach(name => {
+const dir = typeof __dirname !== "undefined" ? __dirname : dirname(fileURLToPath(import.meta.url));
+
+readdirSync(dir).forEach(name => {
   if (ignored.includes(name)) return;
-  if (pattern.test(name)) suites.push({ name, file: join(__dirname, name) });
+  if (pattern.test(name)) suites.push({ name, file: join(dir, name) });
 });
 suites.sort((a, b) => a.name.localeCompare(b.name));
 
-const outfile = "./node_modules/.cache/test.mjs";
-await build({
-  stdin: {
-    contents: suites.map(e => `import ${JSON.stringify("./" + e.name)}`).join("\n"),
-    resolveDir: __dirname,
-  },
-  bundle: true,
-  format: "esm",
-  platform: "node",
-  external: ["uvu/*"],
-  outfile,
-}).catch(() => process.exit(1));
+for (const e of suites) {
+  await import("./" + e.name);
+}
 
-await import(join(process.cwd(), outfile));
+runTests();

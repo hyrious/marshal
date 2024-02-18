@@ -7,6 +7,23 @@ function loads(code: string, options?: marshal.LoadOptions): Promise<any> {
 }
 
 describe("load", test => {
+  test("error on short data", async () => {
+    try {
+      await marshal.load(Uint8Array.of());
+      assert.unreachable("should throw error");
+    } catch (e) {
+      assert.instance(e, TypeError);
+      assert.match(e.message, /too short/);
+    }
+    try {
+      await marshal.load(Uint8Array.of(0x4, 0x9, 0, 0));
+      assert.unreachable("should throw error");
+    } catch (e) {
+      assert.instance(e, TypeError);
+      assert.match(e.message, /can't be read/);
+    }
+  });
+
   test("trivial value", async () => {
     assert.is(await loads(`nil`), null);
     assert.is(await loads(`true`), true);
@@ -47,6 +64,10 @@ describe("load", test => {
     assert.is(await loads(`:symbol`), Symbol.for("symbol"));
   });
 
+  test("regexp", async () => {
+    assert.equal(await loads(`/hello/`), /hello/);
+  });
+
   test("hash", async () => {
     let hash = await loads(`a = Hash.new(false); a[:a] = true; a`);
     assert.is(hash[marshal.S_DEFAULT], false);
@@ -59,7 +80,7 @@ describe("load", test => {
     assert.equal(obj1[marshal.S_EXTENDS], [Symbol.for("M")]);
 
     let obj2: marshal.RubyObject = await loads(
-      `module M end; class A end; a = A.new; a.singleton_class.prepend M; a`
+      `module M end; class A end; a = A.new; a.singleton_class.prepend M; a`,
     );
     assert.is(obj2.class, Symbol.for("A"));
     assert.equal(obj2[marshal.S_EXTENDS], [Symbol.for("M"), Symbol.for("A")]);
@@ -78,7 +99,7 @@ describe("load", test => {
 
   test("struct", async () => {
     let struct = marshal.load(
-      await rb_str`"\004\bS:\023Struct::Useful\a:\006ai\006:\006bi\a"`
+      await rb_str`"\004\bS:\023Struct::Useful\a:\006ai\006:\006bi\a"`,
     ) as marshal.RubyStruct;
     assert.instance(struct, marshal.RubyStruct);
     assert.is(struct.class, Symbol.for("Struct::Useful"));

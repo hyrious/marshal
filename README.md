@@ -28,21 +28,17 @@ load(await file.arrayBuffer());
 
 ### Ruby &harr; JavaScript
 
-| Ruby         | JavaScript                                  |
-| ------------ | ------------------------------------------- |
-| `nil`        | `null`                                      |
-| `"string"`   | `"string"`                                  |
-| `:symbol`    | `Symbol("symbol")` [^1]                     |
-| `123456`     | `123456` (number)                           |
-| `123.456`    | `123.456` (number)                          |
-| `/cat/im`    | `/cat/im` (RegExp)                          |
-| `[]`         | `[]` [^2]                                   |
-| `{}`         | `{}` (plain object) [^3]                    |
-| `Object.new` | `RubyObject { class: Symbol(object) }` [^2] |
-
-[^1]: Symbols are always decoded in UTF-8 even if they may have other encodings.
-[^2]: Instance variables are stored directly as props, i.e. `obj[Symbol(@a)] = 1`.
-[^3]: String/symbol/number keys are always decoded as JS object props.
+| Ruby         | JavaScript                             |
+| ------------ | -------------------------------------- |
+| `nil`        | `null`                                 |
+| `"string"`   | `"string"`                             |
+| `:symbol`    | `Symbol("symbol")`                     |
+| `123456`     | `123456` (number)                      |
+| `123.456`    | `123.456` (number)                     |
+| `/cat/im`    | `/cat/im` (RegExp)                     |
+| `[]`         | `[]`                                   |
+| `{}`         | `{}` (plain object)                    |
+| `Object.new` | `RubyObject { class: Symbol(object) }` |
 
 #### String
 
@@ -74,21 +70,24 @@ Or you can use `options.string` to control the behavior, see [options.string](./
 
 #### Symbols
 
+Symbols are always decoded in UTF-8 even if they may have other encodings.
 You can use `Symbol.keyFor(sym)` in JavaScript to get the symbol name in string.
 
 #### RegExp
 
 Only `i` (ignore case) and `m` (multi-line) flags are preserved.
+However, it is still possible to read all flags by wrapper class, see [options.regexp](./docs/api.md#optionsregexp-wrap).
 
 #### Hash
 
-This library decodes Hash as plain object by default, which means unusual keys
-like an object is ignored. However, it is still possible to keep these keys
+This library decodes Hash as plain object by default, string/symbol/number
+keys are always decoded as JS object props, which means unusual keys like
+an object are ignored. However, it is still possible to keep these keys
 using `Map` or wrapper classes, see [options.hash](./docs/api.md#optionshash-map--wrap).
 
 #### Instance Variables
 
-This library decodes instance variables (often `@a = 1`) as object props.
+This library decodes instance variables (often `@a = 1`) as object props, i.e. `obj[Symbol(@a)] = 1`.
 It is guaranteed that you can retrieve these properties using `Object.getOwnPropertySymbols()`.
 It is possible to convert these symbols to strings, see [options.ivarToString](./docs/api.md#optionsivartostring-true--string).
 

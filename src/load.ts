@@ -1,7 +1,7 @@
 import * as constants from "./constants";
 import { decode, defProp, define_extends, define_hash_default } from "./internal";
 import {
-  Hash,
+  type Hash,
   RubyClass,
   RubyFloat,
   RubyHash,
@@ -151,7 +151,7 @@ const read_chunk = (p: Loader): Uint8Array => read_bytes(p, read_fixnum(p));
 // note: do not use read_string() to really load the string, decode it on demand
 const read_string = (p: Loader): string => decode(read_chunk(p));
 
-const push_object = <T = unknown>(p: Loader, obj: T): T => {
+const push_object = <T = unknown,>(p: Loader, obj: T): T => {
   p.objects_.push(obj);
   return obj;
 };
@@ -195,11 +195,11 @@ const hash_set = (h: Hash, k: unknown, v: unknown, sym2str?: boolean): Hash => {
 };
 
 const ivar_set = (o: {}, k: unknown, v: unknown, ivar2str?: boolean | string) => {
-  if (ivar2str === void 0 || ivar2str === false) (o as any)[k as any] = v;
+  if (ivar2str === void 0 || ivar2str === false) o[k as any] = v;
   else {
     var s = Symbol.keyFor(k as symbol)!;
-    if (ivar2str === true) (o as any)[s as any] = v;
-    else (o as any)[s.replace(/^@/, ivar2str)] = v;
+    if (ivar2str === true) o[s] = v;
+    else o[s.replace(/^@/, ivar2str)] = v;
   }
 };
 
@@ -366,7 +366,7 @@ export function load(data: string | Uint8Array | ArrayBuffer, options?: LoadOpti
 
 export function loadAll(data: string | Uint8Array | ArrayBuffer, options?: LoadOptions): unknown[] {
   var p = new Loader(toDataView(data), options);
-  for (var a = []; p.hasNext_(); ) {
+  for (var a: unknown[] = []; p.hasNext_(); ) {
     a.push(p.get_());
   }
   return a;

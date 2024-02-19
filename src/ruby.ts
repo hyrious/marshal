@@ -49,17 +49,14 @@ export class RubyHash {
     this.entries = entries || [];
     if (default_ !== undefined) this.default = default_;
   }
-  // compareByIdentity() {
-  //   throw new Error("Not implemented");
-  // }
 }
 
 export class RubyRange extends RubyObject {
   constructor(begin: unknown | null, end: unknown | null, exclusive: boolean) {
     super(Symbol.for("Range"));
-    (this as any)[Symbol.for("begin")] = begin;
-    (this as any)[Symbol.for("end")] = end;
-    (this as any)[Symbol.for("excl")] = exclusive;
+    this[Symbol.for("begin")] = begin;
+    this[Symbol.for("end")] = end;
+    this[Symbol.for("excl")] = exclusive;
   }
 }
 

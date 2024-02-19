@@ -1,14 +1,4 @@
 {
   "include": ["src"],
-  "compilerOptions": {
-    "noEmit": true,
-    "module": "ESNext",
-    "target": "ESNext",
-    "types": ["node"],
-    "esModuleInterop": true,
-    "strict": true,
-    "skipLibCheck": true,
-    "stripInternal": true,
-    "moduleResolution": "node"
-  }
+  "extends": "@hyrious/configs/tsconfig.casual.json",
 }

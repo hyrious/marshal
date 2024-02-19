@@ -3,7 +3,7 @@ import isPlainObject from "is-plain-obj";
 import * as constants from "./constants";
 import { encode, symKeys } from "./internal";
 import { RubyClass, RubyFloat, RubyHash, RubyInteger, RubyModule, RubyObject, RubyStruct } from "./ruby";
-import { ClassLike } from "./load";
+import type { ClassLike } from "./load";
 
 export interface DumpOptions {
   /**
@@ -154,13 +154,13 @@ const w_extended = (d: Dumper, e: symbol[]) => {
 };
 
 const w_class = (d: Dumper, type: number, a: RubyObject | RubyStruct) => {
-  if ((a as any)[constants.S_EXTENDS]) w_extended(d, (a as any)[constants.S_EXTENDS]);
+  if (a[constants.S_EXTENDS]) w_extended(d, a[constants.S_EXTENDS]);
   w_byte(d, type);
   w_symbol(d, a.class);
 };
 
 const w_uclass = (d: Dumper, a: RubyObject) => {
-  if ((a as any)[constants.S_EXTENDS]) w_extended(d, (a as any)[constants.S_EXTENDS]);
+  if (a[constants.S_EXTENDS]) w_extended(d, a[constants.S_EXTENDS]);
   if (a.wrapped) {
     w_byte(d, constants.T_UCLASS);
     w_symbol(d, a.class);
@@ -175,7 +175,7 @@ const w_ivar = (d: Dumper, a: {}) => {
     w_long(d, n);
     for (i = 0; i < n; ++i) {
       w_symbol(d, (k = keys[i]));
-      w_object(d, (a as any)[k]);
+      w_object(d, a[k]);
     }
   } else {
     w_long(d, 0);
@@ -204,7 +204,7 @@ const w_remember = (d: Dumper, obj: unknown) => {
 
 const w_known = (d: Dumper, obj: {}, klass: string) => {
   w_remember(d, obj);
-  if ((obj as any)[constants.S_EXTENDS]) w_extended(d, (obj as any)[constants.S_EXTENDS]);
+  if (obj[constants.S_EXTENDS]) w_extended(d, obj[constants.S_EXTENDS]);
   w_byte(d, constants.T_OBJECT);
   w_symbol(d, Symbol.for(klass));
   w_ivar(d, obj);
@@ -329,7 +329,7 @@ const w_object = (d: Dumper, obj: unknown) => {
     if (def !== void 0) w_object(d, def);
   } else if (obj instanceof Map) {
     w_remember(d, obj);
-    var def = (obj as any)[constants.S_DEFAULT] as unknown;
+    var def = obj[constants.S_DEFAULT] as unknown;
     w_byte(d, def === void 0 ? constants.T_HASH : constants.T_HASH_DEF);
     w_long(d, obj.size);
     for (var [k, v] of obj) {

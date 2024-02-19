@@ -10,12 +10,12 @@ const encoder = /* @__PURE__ */ new TextEncoder();
 export const encode = (s: string): Uint8Array => encoder.encode(s);
 
 export const define_extends = (o: unknown): symbol[] | undefined => {
-  if (typeof o === "object" && o && !(o as any)[S_EXTENDS]) {
+  if (typeof o === "object" && o && !o[S_EXTENDS]) {
     var value: symbol[] = [];
     defProp(o, S_EXTENDS, { value, configurable: true });
     return value;
   }
-  return o && (o as any)[S_EXTENDS];
+  return o && o[S_EXTENDS];
 };
 
 export const define_hash_default = (h: {}, value: unknown) => {

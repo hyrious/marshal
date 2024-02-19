@@ -16,6 +16,13 @@ describe("load", test => {
       assert.match(e.message, /too short/);
     }
     try {
+      await marshal.load(Uint8Array.of(0x4, 0x8, "i".charCodeAt(0)));
+      assert.unreachable("should throw error");
+    } catch (e) {
+      assert.instance(e, TypeError);
+      assert.match(e.message, /too short/);
+    }
+    try {
       await marshal.load(Uint8Array.of(0x4, 0x9, 0, 0));
       assert.unreachable("should throw error");
     } catch (e) {
@@ -144,5 +151,25 @@ describe("load", test => {
     class A {}
     let obj = await loads(`class A end; A.new`, { known: { A } });
     assert.instance(obj, A);
+  });
+
+  test("class and module", async () => {
+    class A {}
+    let klass = await loads(`class A end; A`, { known: { A } }); // 'known' has no effect here
+    assert.instance(klass, marshal.RubyClass);
+    assert.is((klass as marshal.RubyClass).name, "A");
+    let mod = await loads(`module A end; A`, { known: { A } });
+    assert.instance(mod, marshal.RubyModule);
+    assert.is((mod as marshal.RubyClass).name, "A");
+  });
+
+  test("loadAll", async () => {
+    let a = await rb_dump("42");
+    let b = await rb_dump('"a"');
+    let c = new Uint8Array(a.byteLength + b.byteLength);
+    c.set(a, 0);
+    c.set(b, a.byteLength);
+    let obj = marshal.loadAll(c);
+    assert.equal(obj, [42, "a"]);
   });
 });

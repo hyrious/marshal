@@ -73,6 +73,10 @@ describe("load", test => {
 
   test("regexp", async () => {
     assert.equal(await loads(`/hello/`), /hello/);
+    let re: marshal.RubyRegexp = await loads(`/hello/mix`, { regexp: "wrap" });
+    assert.instance(re, marshal.RubyRegexp);
+    assert.is(re.source, "hello");
+    assert.is(re.options, marshal.RE_MULTILINE | marshal.RE_IGNORECASE | marshal.RE_EXTENDED);
   });
 
   test("hash", async () => {

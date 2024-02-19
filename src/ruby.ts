@@ -42,6 +42,15 @@ export class RubyModule extends RubyBaseObject {
   }
 }
 
+export class RubyRegexp {
+  declare source: string;
+  declare options: number;
+  constructor(source = "", options = 0) {
+    this.source = source;
+    this.options = options;
+  }
+}
+
 export class RubyHash {
   declare entries: [unknown, unknown][];
   declare default?: unknown;

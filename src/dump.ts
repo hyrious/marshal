@@ -2,7 +2,16 @@ import isPlainObject from "is-plain-obj";
 
 import * as constants from "./constants";
 import { encode, symKeys } from "./internal";
-import { RubyClass, RubyFloat, RubyHash, RubyInteger, RubyModule, RubyObject, RubyStruct } from "./ruby";
+import {
+  RubyClass,
+  RubyFloat,
+  RubyHash,
+  RubyInteger,
+  RubyModule,
+  RubyObject,
+  RubyRegexp,
+  RubyStruct,
+} from "./ruby";
 import type { ClassLike } from "./load";
 
 export interface DumpOptions {
@@ -296,6 +305,11 @@ const w_object = (d: Dumper, obj: unknown) => {
     if (obj.flags.includes("i")) options |= constants.RE_IGNORECASE;
     if (obj.flags.includes("m")) options |= constants.RE_MULTILINE;
     w_byte(d, options);
+  } else if (obj instanceof RubyRegexp) {
+    w_remember(d, obj);
+    w_byte(d, constants.T_REGEXP);
+    w_string(d, obj.source);
+    w_byte(d, obj.options);
   } else if (typeof obj === "string") {
     w_remember(d, obj);
     w_byte(d, constants.T_IVAR);

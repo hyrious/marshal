@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3
+
+- Add `regexp: wrap` to wrap ruby regexp in `RubyRegexp`.
+
 ## 0.3.2
 
 - Add `string: utf8 | binary` in `load()` to force decode or not decode strings.

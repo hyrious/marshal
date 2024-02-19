@@ -7,6 +7,7 @@
   - [options.numeric: `"wrap"`](#optionsnumeric-wrap)
   - [options.hashSymbolKeysToString: `true`](#optionshashsymbolkeystostring-true)
   - [options.hash: `"map"` | `"wrap"`](#optionshash-map--wrap)
+  - [options.regexp: `"wrap"`](#optionsregexp-wrap)
   - [options.ivarToString: `true` | `string`](#optionsivartostring-true--string)
   - [options.known: `{ class }`](#optionsknown--class-)
 - [dump(value, options?)](#dumpvalue-options)
@@ -80,7 +81,7 @@ load(data); // => { Symbol(a): 1 }
 load(data, { hashSymbolKeysToString: true }); // => { a: 1 }
 ```
 
-### options.hash: `"map"` | `"wrap"`
+### options.hash: `"map"` \| `"wrap"`
 
 Wrap ruby Hash in `Map` or the `RubyHash` class.
 `hashSymbolKeysToString` is ignored when this option is set.
@@ -94,7 +95,32 @@ load(data, { hash: "map" }); // => Map { Symbol(a) => 1 }
 load(data, { hash: "wrap" }); // => RubyHash { entries: [[Symbol(a), 1]] }
 ```
 
-### options.ivarToString: `true` | `string`
+### options.regexp: `"wrap"`
+
+Wrap ruby Regexp in the `RubyRegexp` class so that you can read ruby specific flags.
+
+```rb
+data = Marshal.dump(/cat/mix)
+```
+
+```js
+load(data); // => /cat/im
+load(data, { regexp: "wrap" }); // => RubyRegexp { source: 'cat', options: 7 }
+```
+
+To test these flags, you can read the constants named `RE_*` from this library:
+
+<samp>
+
+| Constant      | Value |
+| ------------- | ----- |
+| RE_IGNORECASE | 1     |
+| RE_EXTENDED   | 2     |
+| RE_MULTILINE  | 4     |
+
+</samp>
+
+### options.ivarToString: `true` \| `string`
 
 Convert instance variable names to string props in JS objects.
 

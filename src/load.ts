@@ -9,6 +9,7 @@ import {
   RubyModule,
   RubyObject,
   RubyStruct,
+  RubyRegexp,
 } from "./ruby";
 
 export interface ClassLike {
@@ -57,6 +58,15 @@ export interface LoadOptions {
    * ```
    */
   hash?: "map" | "wrap";
+
+  /**
+   * Instead of JS regexp, decode ruby Regexp as RubyRegexp.
+   * ```js
+   * load(data) // => /cat/im
+   * load(data, { regexp: "wrap" }) // => RubyRegexp { source: 'cat', options: 5 }
+   * ```
+   */
+  regexp?: "wrap";
 
   /**
    * If set, put instance variables (often :@key) as string keys in JS objects.
@@ -207,6 +217,7 @@ const read_any = (p: Loader): unknown => {
   var t = read_byte(p);
   var string = p.options_.string;
   var numeric = p.options_.numeric === "wrap";
+  var wrap_regexp = p.options_.regexp === "wrap";
   var ivar2str = p.options_.ivarToString;
   var known = p.options_.known || {};
 
@@ -314,7 +325,7 @@ const read_any = (p: Loader): unknown => {
       return obj;
 
     case constants.T_REGEXP:
-      return push_object(p, read_regexp(p));
+      return push_object(p, wrap_regexp ? new RubyRegexp(read_string(p), read_byte(p)) : read_regexp(p));
 
     case constants.T_STRING:
       return push_object(p, string === "utf8" ? read_string(p) : read_chunk(p));

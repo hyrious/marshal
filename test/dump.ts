@@ -4,9 +4,25 @@ import { describe, rb_load } from "./helper";
 
 function dumps(
   value: unknown,
-  opts: { pre?: string; post?: string } & marshal.DumpOptions = {},
+  opts: { pre?: string; post?: string } & marshal.DumpOptions = {}
 ): Promise<string> {
   return rb_load(marshal.dump(value, opts), opts.pre, opts.post);
+}
+
+// Ruby 3.4.1 slightly changes how Hash prints, so adds a helper here.
+function assert_are(a: any, ...b: any[]): void {
+  let lastError: Error | null = null;
+  for (const bb of b) {
+    try {
+      assert.is(a, bb);
+      return;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+  if (lastError) {
+    throw lastError;
+  }
 }
 
 describe("dump", test => {
@@ -45,14 +61,14 @@ describe("dump", test => {
   });
 
   test("hash", async () => {
-    assert.is(await dumps(new marshal.RubyHash([["a", 1]])), '{"a"=>1}');
-    assert.is(await dumps(new Map([["a", 1]])), '{"a"=>1}');
+    assert_are(await dumps(new marshal.RubyHash([["a", 1]])), '{"a"=>1}', '{"a" => 1}');
+    assert_are(await dumps(new Map([["a", 1]])), '{"a"=>1}', '{"a" => 1}');
 
     let a = new marshal.RubyHash([
       ["x", 1],
       ["x", 1],
     ]);
-    assert.is(await dumps(a), '{"x"=>1}');
+    assert_are(await dumps(a), '{"x"=>1}', '{"x" => 1}');
   });
 
   test("circular", async () => {
@@ -62,7 +78,7 @@ describe("dump", test => {
 
     let hash: marshal.Hash = {};
     hash[Symbol.for("a")] = hash;
-    assert.is(await dumps(hash), "{:a=>{...}}");
+    assert_are(await dumps(hash), "{:a=>{...}}", "{a: {...}}");
 
     let obj = new marshal.RubyObject(Symbol.for("Object"));
     obj[Symbol.for("@a")] = obj;
@@ -83,8 +99,8 @@ describe("dump", test => {
 
   test("hashStringKeysToSymbol", async () => {
     let obj = { a: 1, b: 2 };
-    assert.is(await dumps(obj), '{"a"=>1, "b"=>2}');
-    assert.is(await dumps(obj, { hashStringKeysToSymbol: true }), "{:a=>1, :b=>2}");
+    assert_are(await dumps(obj), '{"a"=>1, "b"=>2}', '{"a" => 1, "b" => 2}');
+    assert_are(await dumps(obj, { hashStringKeysToSymbol: true }), "{:a=>1, :b=>2}", "{a: 1, b: 2}");
   });
 
   test("error on undefined", async () => {

@@ -6,13 +6,13 @@ jobs:
   build:
     runs-on: ubuntu-latest
     concurrency:
-      group: ci-${{ github.ref }}
+      group: ${{ github.workflow }}-${{ github.ref }}
       cancel-in-progress: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: "lts/*"
           cache: "npm"
       - run: ruby -v
       - run: npm ci

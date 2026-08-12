@@ -1,4 +1,4 @@
 {
-  "include": ["src"],
+  "include": ["src", "test"],
   "extends": "@hyrious/configs/tsconfig.casual.json",
 }

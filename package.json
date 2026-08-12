@@ -11,10 +11,7 @@
     "serialize"
   ],
   "exports": {
-    "node": {
-      "import": "./dist/marshal.mjs",
-      "require": "./dist/marshal.js"
-    },
+    "require": "./dist/marshal.js",
     "default": "./dist/marshal.mjs"
   },
   "main": "dist/marshal.js",
@@ -34,16 +31,20 @@
     "test": "c8 -n=src -r=text -r=html esbuild-dev --no-warnings --loader test/index.ts"
   },
   "devDependencies": {
-    "@hyrious/configs": "^0.1.3",
-    "@hyrious/dts": "^0.3.0",
-    "@hyrious/esbuild-dev": "^0.10.11",
-    "@types/node": "^20.17.12",
-    "c8": "^10.1.3",
-    "esbuild": "^0.24.2",
+    "@hyrious/configs": "^0.1.6",
+    "@hyrious/esbuild-dev": "^0.10.14",
+    "@types/node": "^20.19.11",
+    "c8": "^12.0.0",
+    "esbuild": "^0.28.2",
     "is-plain-obj": "^4.1.0",
-    "pretty-bytes": "^6.1.1",
-    "rollup": "^4.30.1",
-    "typescript": "^5.7.3",
+    "nano-spawn": "^2.1.0",
+    "pretty-bytes": "^7.1.1",
+    "rollup": "^4.62.4",
+    "typescript": "^6.0.3",
     "uvu": "^0.5.6"
+  },
+  "allowScripts": {
+    "esbuild": true,
+    "fsevents": true
   }
 }

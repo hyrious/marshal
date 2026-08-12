@@ -17,7 +17,7 @@
 
 ## load(data, options?)
 
-Parse a Ruby marshal data to a JavaScript value..
+Parse a Ruby marshal data into a JavaScript value.
 
 - `data` {string | Uint8Array | ArrayBuffer} The marshal data.
 - `options` {Object} Parse options.

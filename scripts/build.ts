@@ -1,7 +1,8 @@
-import fs from "fs";
+/// <reference types="node" />
+import fs from "node:fs";
+import spawn from "nano-spawn";
 import * as rollup from "rollup";
 import * as esbuild from "esbuild";
-import * as dts from "@hyrious/dts";
 import prettyBytes from "pretty-bytes";
 
 fs.rmSync("dist", { recursive: true, force: true });
@@ -76,6 +77,6 @@ print(" cjs", cjs_);
 print("iife", iife_);
 
 start = Date.now();
-await dts.build({ entryPoints: { marshal: "src/index.ts" } });
+await spawn("npx", ["@hyrious/dts", "-o", "dist/marshal.d.ts"]);
 fs.cpSync("dist/marshal.d.ts", "dist/marshal.d.mts");
 console.log("Built dist/marshal.d.ts in", Date.now() - start, "ms");

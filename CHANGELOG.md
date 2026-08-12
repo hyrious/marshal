@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4
+
+- Fix `load(negative_fixnum)` wrong for ~30k+ numbers. (#5)
+
 ## 0.3.3
 
 - Add `regexp: wrap` to wrap ruby regexp in `RubyRegexp`.

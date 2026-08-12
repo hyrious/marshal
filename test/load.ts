@@ -41,6 +41,14 @@ describe("load", test => {
   });
 
   test("number", async () => {
+    assert.is(await loads(`-150`), -150);
+    assert.is(await loads(`-256`), -256);
+    assert.is(await loads(`-129`), -129);
+    assert.is(await loads(`-65536`), -65536);
+    assert.is(await loads(`-32769`), -32769);
+    assert.is(await loads(`-128`), -128);
+    assert.is(await loads(`-300`), -300);
+    assert.is(await loads(`150`), 150);
     assert.is(await loads(`114514`), 114514);
     assert.is(await loads(`-1919810`), -1919810);
     assert.is(await loads(`1145141919810`), 1145141919810);
@@ -49,28 +57,6 @@ describe("load", test => {
     let zero = await loads(`-0.0`, { numeric: "wrap" });
     assert.instance(zero, marshal.RubyFloat);
     assert.is(zero.value, -0);
-  });
-
-  // Regression: negative fixnums are stored as the shortest little-endian
-  // form whose omitted high bytes are all 1s. When the last byte written has
-  // its high bit clear (e.g. -150 -> 0xff 0x6a), sign-extending that byte
-  // yields a positive number.
-  test("negative fixnum with high bit clear in last byte", async () => {
-    const i = "i".charCodeAt(0);
-    const load = (...bytes: number[]) => marshal.load(Uint8Array.of(0x4, 0x8, i, ...bytes));
-
-    // 1 byte: the whole -256..-129 band
-    assert.is(load(0xff, 0x6a), -150);
-    assert.is(load(0xff, 0x00), -256);
-    assert.is(load(0xff, 0x7f), -129);
-    // 2 bytes: -65536..-32769
-    assert.is(load(0xfe, 0x00, 0x00), -65536);
-    assert.is(load(0xfe, 0xff, 0x7f), -32769);
-
-    // already correct before the fix; kept so a future change cannot regress them
-    assert.is(load(0xff, 0x80), -128);
-    assert.is(load(0xfe, 0xd4, 0xfe), -300);
-    assert.is(load(0x01, 0x96), 150);
   });
 
   test("string", async () => {

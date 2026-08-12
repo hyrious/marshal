@@ -148,13 +148,9 @@ const read_fixnum = (p: Loader): number => {
   if (t === 0) {
     return 0;
   } else if (-4 <= t && t <= 4) {
-    for (var n = Math.abs(t), b = read_bytes(p, n), a = 0, i = n - 1; i >= 0; --i)
+    for (var n = Math.abs(t), b = read_bytes(p, n), a = 0, i = n - 1; i >= 0; --i) {
       a = (a << 8) | b[i];
-    // Negative fixnums are stored as the shortest little-endian form whose
-    // omitted high bytes are all 1s -- marshal.c stops emitting once the
-    // remaining value is -1, so the last byte written does not necessarily
-    // carry the sign. Restore the omitted bytes instead of sign-extending
-    // the last byte read.
+    }
     return t > 0 ? a : a | (-1 << (n * 8));
   } else {
     return t > 0 ? t - 5 : t + 5;
@@ -166,7 +162,7 @@ const read_chunk = (p: Loader): Uint8Array => read_bytes(p, read_fixnum(p));
 // note: do not use read_string() to really load the string, decode it on demand
 const read_string = (p: Loader): string => decode(read_chunk(p));
 
-const push_object = <T = unknown,>(p: Loader, obj: T): T => {
+const push_object = <T = unknown>(p: Loader, obj: T): T => {
   p.objects_.push(obj);
   return obj;
 };

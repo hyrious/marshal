@@ -41,6 +41,14 @@ describe("load", test => {
   });
 
   test("number", async () => {
+    assert.is(await loads(`-150`), -150);
+    assert.is(await loads(`-256`), -256);
+    assert.is(await loads(`-129`), -129);
+    assert.is(await loads(`-65536`), -65536);
+    assert.is(await loads(`-32769`), -32769);
+    assert.is(await loads(`-128`), -128);
+    assert.is(await loads(`-300`), -300);
+    assert.is(await loads(`150`), 150);
     assert.is(await loads(`114514`), 114514);
     assert.is(await loads(`-1919810`), -1919810);
     assert.is(await loads(`1145141919810`), 1145141919810);

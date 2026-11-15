@@ -1,6 +1,6 @@
 {
   "name": "@hyrious/marshal",
-  "version": "0.3.4",
+  "version": "0.3.5",
   "description": "Ruby marshal for the browser and node.js",
   "author": "hyrious <hyrious@outlook.com>",
   "license": "MIT",

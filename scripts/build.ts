@@ -77,6 +77,16 @@ print(" cjs", cjs_);
 print("iife", iife_);
 
 start = Date.now();
-await spawn("npx", ["@hyrious/dts", "-o", "dist/marshal.d.ts"]);
+await spawn("npm", [
+  "exec",
+  "--yes",
+  "--package=@hyrious/dts@0.3.8",
+  // `import 'typescript'` resolves to globally installed TypeScript 7, pin it to 6 here.
+  "--package=typescript@6.0.3",
+  "--",
+  "dts",
+  "-o",
+  "dist/marshal.d.ts",
+]);
 fs.cpSync("dist/marshal.d.ts", "dist/marshal.d.mts");
 console.log("Built dist/marshal.d.ts in", Date.now() - start, "ms");

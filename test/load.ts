@@ -53,6 +53,8 @@ describe("load", test => {
     assert.is(await loads(`-1919810`), -1919810);
     assert.is(await loads(`1145141919810`), 1145141919810);
     assert.is(await loads(`123.456`), 123.456); // please, don't compare float
+    assert.is(await loads(`-16777217`), -16777217);
+    assert.is(await loads(`-(2 ** 30)`), -1073741824);
 
     let zero = await loads(`-0.0`, { numeric: "wrap" });
     assert.instance(zero, marshal.RubyFloat);
@@ -73,10 +75,12 @@ describe("load", test => {
     const utf8_as_binary = await loads(`"a"`, { string: "binary" });
     assert.instance(utf8_as_binary, Uint8Array);
     assert.is(utf8_as_binary[0], 97);
+    assert.is(marshal.load(marshal.dump("foo"), { string: "utf8" }), "foo");
   });
 
   test("symbol", async () => {
     assert.is(await loads(`:symbol`), Symbol.for("symbol"));
+    assert.is(await loads(`:中文`), Symbol.for("中文"));
   });
 
   test("regexp", async () => {

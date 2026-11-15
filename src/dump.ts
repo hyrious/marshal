@@ -149,9 +149,18 @@ const w_symbol = (d: Dumper, sym: symbol) => {
     w_byte(d, constants.T_SYMLINK);
     w_long(d, d.symbols_.get(sym)!);
   } else {
+    var s = Symbol.keyFor(sym)!;
+    var bytes = encode(s);
+    var utf8 = bytes.length !== s.length;
+    if (utf8) w_byte(d, constants.T_IVAR);
     w_byte(d, constants.T_SYMBOL);
-    w_bytes(d, encode(Symbol.keyFor(sym)!));
+    w_bytes(d, bytes);
     d.symbols_.set(sym, d.symbols_.size);
+    if (utf8) {
+      w_long(d, 1);
+      w_symbol(d, constants._E);
+      w_byte(d, constants.T_TRUE);
+    }
   }
 };
 
@@ -179,7 +188,7 @@ const w_uclass = (d: Dumper, a: RubyObject) => {
 // also used for struct.members, both printing sym keys
 const w_ivar = (d: Dumper, a: {}) => {
   // prettier-ignore
-  var keys = symKeys(a), n = keys.length, i, k;
+  var keys = symKeys(a), n = keys.length, i: number, k: symbol;
   if (n > 0) {
     w_long(d, n);
     for (i = 0; i < n; ++i) {

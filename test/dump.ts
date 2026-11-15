@@ -4,7 +4,7 @@ import { describe, rb_load } from "./helper";
 
 function dumps(
   value: unknown,
-  opts: { pre?: string; post?: string } & marshal.DumpOptions = {}
+  opts: { pre?: string; post?: string } & marshal.DumpOptions = {},
 ): Promise<string> {
   return rb_load(marshal.dump(value, opts), opts.pre, opts.post);
 }
@@ -54,6 +54,7 @@ describe("dump", test => {
   test("string", async () => {
     assert.is(await dumps("hello"), '"hello"');
     assert.is(await dumps(new TextEncoder().encode("hello")), '"hello"');
+    assert.is(await rb_load(marshal.dump(Symbol.for("中文"))), ":中文");
   });
 
   test("regexp", async () => {

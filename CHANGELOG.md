@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.3.5
+
+- Fix `load(4_byte_negative_fixnum)` wrong. (#7)
+- Fix `load(utf8_symbol)` or `load(bytes, { string: 'utf8' })` throws on strict mode. (#7)
+- Fix `dump(utf8_symbol)` wrong. (#7)
+
 ## 0.3.4
 
 - Fix `load(negative_fixnum)` wrong for ~30k+ numbers. (#5)

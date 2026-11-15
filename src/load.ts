@@ -151,7 +151,7 @@ const read_fixnum = (p: Loader): number => {
     for (var n = Math.abs(t), b = read_bytes(p, n), a = 0, i = n - 1; i >= 0; --i) {
       a = (a << 8) | b[i];
     }
-    return t > 0 ? a : a | (-1 << (n * 8));
+    return t > 0 ? a : n === 4 ? a | 0 : a | (-1 << (n * 8));
   } else {
     return t > 0 ? t - 5 : t + 5;
   }
@@ -245,19 +245,15 @@ const read_any = (p: Loader): unknown => {
         k = read_any(p);
         v = read_any(p);
         // if a string (read as uint8array) has ivar :E or :encoding, decode it
-        if (
-          o instanceof Uint8Array &&
-          (k === constants._E || k === constants._encoding) &&
-          string !== "binary"
-        ) {
-          if (k === constants._E) o = decode(o);
-          else o = new TextDecoder(decode(v as Uint8Array)).decode(o);
-          p.objects_[p.objects_.length - 1] = o;
+        if (k === constants._E || k === constants._encoding) {
+          if (o instanceof Uint8Array && string !== "binary") {
+            if (k === constants._E) o = decode(o);
+            else o = new TextDecoder(decode(v as Uint8Array)).decode(o);
+            p.objects_[p.objects_.length - 1] = o;
+          }
         }
         // otherwise try to put the ivar
-        else if (o != null) {
-          // primitives (boolean, number, string, symbol, ...) cannot hold properties,
-          // so code below silently fail. other objects get a [Symbol(@key)] property
+        else if (typeof o === "object" && o != null) {
           ivar_set(o, k, v, ivar2str);
         }
       }
@@ -378,7 +374,7 @@ export function load(data: string | Uint8Array | ArrayBuffer, options?: LoadOpti
 
 export function loadAll(data: string | Uint8Array | ArrayBuffer, options?: LoadOptions): unknown[] {
   var p = new Loader(toDataView(data), options);
-  for (var a: unknown[] = []; p.hasNext_(); ) {
+  for (var a: unknown[] = []; p.hasNext_();) {
     a.push(p.get_());
   }
   return a;
